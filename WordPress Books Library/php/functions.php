@@ -32,6 +32,12 @@ function enable_cpt_in_rest_api() {
 			'schema' => null,
 			)
 		);
+
+		register_rest_field( $post_type, 'wbg_download_link', array(
+			'update_callback' => 'update_post_meta_dl_link',
+			'schema' => null,
+			)
+		);
     }
 }
 add_action( 'rest_api_init', 'enable_cpt_in_rest_api' );
@@ -47,6 +53,11 @@ function update_post_meta_author($meta_value, $object) {
 
 function update_post_meta_status($meta_value, $object) {
 	return update_wbg_post_meta('wbg_status', $meta_value, $object);
+}
+
+function update_post_meta_dl_link($meta_value, $object) {
+
+	return update_wbg_post_meta('wbg_download_link', $meta_value, $object);
 }
 
 function get_wbg_post_meta($meta_name, $object){

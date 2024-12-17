@@ -16,7 +16,7 @@ def read_csv_file(file_path):
             csv_reader = csv.DictReader(csv_file)
             # Ensure the CSV has the expected columns
             
-            expected_columns = ["FirstName","MiddleName","LastName","BookTitle","BookFile","BookCoverFile"]
+            expected_columns = ["FirstName","MiddleName","LastName","BookTitle","BookFile","BookCoverFile","AuthorFolder"]
             if csv_reader.fieldnames is None or any(col not in csv_reader.fieldnames for col in expected_columns):
                 raise ValueError(f"CSV file must contain the following columns: {', '.join(expected_columns)}")
 

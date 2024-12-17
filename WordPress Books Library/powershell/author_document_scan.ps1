@@ -1,7 +1,9 @@
 #$foldersPath = "F:\3_Curated\MTI_Library\Books"  # Path to the root folder containing author folders
-$foldersPath = "F:\2_Processing\MTC_Libarary_Temp"  # Path to the root folder containing author folders
+#$foldersPath = "F:\2_Processing\MTC_Libarary_Temp"  # Path to the root folder containing author folders
+$foldersPath = "C:\laragon\www\MTI-Sandbox-1\wp-content\library"  # Path to local library author folder
 
-$outputCSV = "F:\2_Processing\Script_Output\processing_booklist.csv"  # Path for the output CSV file
+#$outputCSV = "F:\2_Processing\Script_Output\processing_booklist.csv"  # Path for the output CSV file
+$outputCSV = "C:\data\local_booklist.csv"  # Path for the output CSV file
 
 # Create an array to store the extracted data
 $data = @()
@@ -48,8 +50,10 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
                     MiddleName = $middlename
                     LastName = $lastname
                     BookTitle = $bookTitle
-					BookFile = $bookFile.FullName
-					BookCoverFile = $bookCoverFile.FullName
+					BookFile = $bookFile.Name
+					BookCoverFile = $bookCoverFile.Name
+					AuthorFolder = $authorFolder.Name
+					BasePath = $foldersPath
                 }
             }
 			elseif (-not $bookFile.Name.contains("_cover")){				
