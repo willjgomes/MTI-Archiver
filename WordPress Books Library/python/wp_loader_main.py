@@ -16,10 +16,13 @@ for record in book_csv_reader.read_csv_file(csv_file_path):
         "", 
         record['FirstName'] + " " + record['LastName'],
         record['AuthorFolder'],
-        record['BookFile'])
+        record['BookFile'],
+        record['BookCoverFile'],
+        record['BasePath']
+        )
     
-    if (book_count <= 1):
-        wpg_book_post.createBook(new_book)
+    #if (book_count <= 1):
+    wpg_book_post.createBook(new_book)
     #print(new_book)
 
 print(f"Books processed {book_count}")
