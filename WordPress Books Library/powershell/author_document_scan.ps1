@@ -1,9 +1,26 @@
-#$foldersPath = "F:\3_Curated\MTI_Library\Books"  # Path to the root folder containing author folders
-#$foldersPath = "F:\2_Processing\MTC_Libarary_Temp"  # Path to the root folder containing author folders
-$foldersPath = "C:\laragon\www\MTI-Sandbox-1\wp-content\library"  # Path to local library author folder
+# This powershell script is used to index all the documents found a book cateogry type folder by author name and 
+# documen(s) of the author.  The purpose of this indexing file is as follows:
+#
+# 1) Provide an index for the loader process to find and load all documents
+# 2) Ensure the proper author formatting and file processing is followed
+# 3) Use for comparison of folders processed between runs
+#
 
-#$outputCSV = "F:\2_Processing\Script_Output\processing_booklist.csv"  # Path for the output CSV file
-$outputCSV = "C:\data\local_booklist.csv"  # Path for the output CSV file
+#Input Parameters
+param (
+	[string]$foldersPath,		#Path to authors folder
+	[string]$outputCSV,			#Path to output filename
+    [switch]$Debug				#Turn on debugging
+)
+
+# Set parameters for quick testing
+# $foldersPath = "F:\3_Curated\MTI_Library\Books"	
+# $outputCSV = "C:\data\local_booklist.csv"  # Path for the output CSV file
+
+if ($Debug) {
+    $DebugPreference = "Continue"
+	Write-Debug "Debugging output for indexing process"
+}
 
 # Create an array to store the extracted data
 $data = @()
@@ -11,11 +28,14 @@ $data = @()
 # Initialize author folder counts
 $authorsProcessedCount = 0
 $authorsSkippedCount = 0
+$errorCount = 0
+
+Write-Information "Author Directory, File Name, Error"
 
 # Get all author folders
 Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
     $authorFolder = $_
-	#Write-Host "Processing Author Folder $($authorFolder.Name)"
+	Write-Debug "Processing Author Folder > $($authorFolder.Name)"
 		
 	# Author Name Regex Version 1: This does not handle De, De La, or Da for last name
 	#if ($authorFolder.Name -match "^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+)$") {
@@ -33,7 +53,7 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
         # Get all book files within the author folder
         Get-ChildItem -Path $authorFolder.FullName -File | ForEach-Object {
             $bookFile = $_
-			#Write-Host "Processing Book File $($bookFile.Name)"
+			Write-Debug "== Processing File > $($bookFile.Name)"
 			
             # Process book file if it conforms to book naming pattern
             if ($bookFile.Name -match '^(.*?)_' -and -not $bookFile.Name.contains("_cover")) {
@@ -58,12 +78,14 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
             }
 			elseif (-not $bookFile.Name.contains("_cover")){				
 				# Report an error only if it is not a cover image file
-				Write-Host "Skipping Book File $($bookFile.Name): Name does not match regex pattern for book"					
+				Write-Debug "== Skipping File >>> $($bookFile.Name): Name does not match regex pattern for book"
+				Write-Information "$($bookFile.DirectoryName), $($bookFile.Name), File not properly named "
+				$errorCount++
 			}
         }
     } else {
 		$authorsSkippedCount++
-		Write-Host "Skipping Author Folder $($authorFolder.Name): Name does not match regex pattern for author"		
+		Write-Information "Skipping Author Folder   > $($authorFolder.Name): Name does not match regex pattern for author"		
 	}
 }
 
