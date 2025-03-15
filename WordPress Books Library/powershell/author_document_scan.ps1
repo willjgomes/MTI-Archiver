@@ -25,8 +25,9 @@ if ($Debug) {
 # Create an array to store the extracted data
 $data = @()
 
-# Initialize author folder counts
+# Initialize counts
 $authorsProcessedCount = 0
+$documentProcessedCount = 0
 $authorsSkippedCount = 0
 $errorCount = 0
 
@@ -52,11 +53,12 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
 		
         # Get all book files within the author folder
         Get-ChildItem -Path $authorFolder.FullName -File | ForEach-Object {
-            $bookFile = $_
+			$bookFile = $_
 			Write-Debug "== Processing File > $($bookFile.Name)"
 			
             # Process book file if it conforms to book naming pattern
             if ($bookFile.Name -match '^(.*?)_' -and -not $bookFile.Name.contains("_cover")) {
+				$documentProcessedCount++
                 # Get the book title
 				$bookTitle = $matches[1] -replace '-', ' '
 
@@ -92,7 +94,9 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
 # Export the data to a CSV file
 $data | Export-Csv -Path $outputCSV -NoTypeInformation
 
-Write-Host "`nSummary: "
-Write-Host "CSV file created at $outputCSV"
-Write-Host "Author Folders Procssed: $authorsProcessedCount"
-Write-Host "Author Folders Skipped : $authorsSkippedCount"
+Write-Output "`Indexing Summary (Powershell) "
+Write-Output "`t==> Index file created: at $outputCSV"
+Write-Output "`t==> Author Folders Procssed: $authorsProcessedCount"
+Write-Output "`t==> Author Folders Skipped : $authorsSkippedCount"
+Write-Output "`t==> Documents Identified   : $documentProcessedCount"
+Write-Output "`t==> Document Errors        : $errorCount (See ...Index_Error.csv file)"
