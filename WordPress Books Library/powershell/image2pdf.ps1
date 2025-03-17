@@ -4,6 +4,7 @@
 
 $DocumentSource = 'C:\data\Bundle_2_on_right_side_of_White_Co-Workers_Folder'
 $DocumentTarget = 'C:\data\generated\'
+$DocumentParent = ''
 
 # This uses the Image Magick tool to combine and convert all jpg files in
 # a given folder to a PDF file.
@@ -13,10 +14,10 @@ function CreatePDFFile {
 		[string]$OutputFolderName,
 		[string]$PDFName
 	)
-
+	
 	$imageMagickPath = "C:\Program Files\ImageMagick-7.1.1-Q16-HDRI\magick.exe"
 	$sourcePath = $SourceFolderName + "\*.jpg"
-	$outputPath = $DocumentTarget + "\" + $PDFName + ".pdf"
+	$outputPath = $DocumentParent + "\" + $PDFName + ".pdf"
 	
 	# If the File name is too long, use default file name
 	if ($outputPath.length -gt 260){
@@ -36,12 +37,12 @@ function CopyAndRenameImageFiles {
 
 	# Define the source folder and the working directory
 	$sourceFolder = $Folder.FullName
-	$workingDirectory = $sourceFolder + "\temp"
+	$workingDirectory = $sourceFolder + "\Renamed_Files"
 
 	# Create the working directory if it doesn't exist and copy the files
 	If (-Not (Test-Path -Path $workingDirectory)) {
 
-		Write-Host "`tCreating Temp Directory with Renamed Files"
+		Write-Output "`tCreating Temp Directory with Renamed Files"
 		
 		# Create the directory
 		New-Item -ItemType Directory -Path $workingDirectory
@@ -74,10 +75,10 @@ function CopyAndRenameImageFiles {
 
 			# Copy the file to the working directory with the new name
 			Copy-Item -Path $file.FullName -Destination $destinationPath
-			Write-Host "Copied and renamed $($file.Name) to $newName"
+			Write-Output "Copied and renamed $($file.Name) to $newName"
 		}
 	} Else {
-		Write-Host "`tTemp files already created"
+		Write-Output "`tTemp files already created"
 	}
 }
 
@@ -86,33 +87,39 @@ function ProcessFolder {
 		[System.io.DirectoryInfo]$Folder
 	)
 
-	Write-Host "$($Folder.Name)"
+	Write-Host "Processing $($Folder.Name)"
+	Write-Output "$($Folder.Name)"
 	$files = Get-ChildItem -File $Folder.FullName | Where-Object { $_.Extension -eq '.jpg' }
 	If ($files) {
-		Write-Host "`tTotal Files: `t$($files.count)"
+		Write-Output "`tTotal Files: `t$($files.count)"
 
 		If ($files.count -gt 9) {
 			CopyAndRenameImageFiles -Folder $Folder
-			$TempFolderName = $Folder.FullName + "\temp"
-			Write-Host $TempFolderName
+			$TempFolderName = $Folder.FullName + "\Renamed_Files"
+			Write-Output $TempFolderName
 			CreatePDFFile -SourceFolderName $TempFolderName -OutputFolderName $Folder.FullName -PDFName $Folder.Name
 		} Else {
 			foreach ($file in $files) {				
-				Write-Host "`t$($file.Name)"
+				Write-Output "`t$($file.Name)"
 			}
 			CreatePDFFile -SourceFolderName $Folder.FullName -OutputFolderName $Folder.FullName -PDFName $Folder.Name
 		}
 
 	} Else {
-		Write-Host "`tThere are no files in $($Folder.Name)"
+		Write-Output "`tThere are no files in $($Folder.Name)"
 	}
 
 	$SubFolders = Get-ChildItem -Directory $Folder.FullName
 	If ($SubFolders) {
-		Write-Host "`tTotal Sub-Folders: `t$($SubFolders.count)"
+		Write-Output "`tTotal Sub-Folders: `t$($SubFolders.count)"
+		$subFolderCount = 0;
 		foreach ($SubFolder in $SubFolders) {
-			if ($SubFolder.Name -ne 'temp') {
+			$subFolderCount = $subFolderCount + 1
+			if ($SubFolder.Name -ne 'Renamed_Files') {
+				Write-Output "Processing SubFolder $($SubFolderCount) of $($Folder.Name)"
 				ProcessFolder -Folder $SubFolder
+			} else {
+				Write-Output "Skipping Processed SubFolder $($SubFolderCount) (Renamed_Files) of $($Folder.Name)"
 			}
 		}
 	}
@@ -126,10 +133,17 @@ $Folders = Get-Childitem -Path $DocumentSource |
 Where {$_.PSIsContainer} 
 
 Write-Host "Processing: $($DocumentSource)"
+Write-Output "Processing: $($DocumentSource)"
 If ($Folders) {
 	foreach ($Folder in $Folders) {
+		$DocumentParent = $DocumentTarget + "\" + $Folder
+		If (-Not (Test-Path -Path $DocumentParent)) {
+			# Create the directory
+			New-Item -ItemType Directory -Path $DocumentParent
+		}
+
 		ProcessFolder -Folder $Folder
 	} 
 } Else {
-	Write-Host "`tTarget folder is empty!"
+	Write-Output "`tTarget folder is empty!"
 }
