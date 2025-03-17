@@ -36,7 +36,7 @@ Write-Information "Author Directory, File Name, Error"
 # Get all author folders
 Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
     $authorFolder = $_
-	Write-Debug "Processing Author Folder > $($authorFolder.Name)"
+	Write-Debug "Processing Author Folder > [$($authorFolder.Name)]"
 		
 	# Author Name Regex Version 1: This does not handle De, De La, or Da for last name
 	#if ($authorFolder.Name -match "^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+)$") {
@@ -54,7 +54,7 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
         # Get all book files within the author folder
         Get-ChildItem -Path $authorFolder.FullName -File | ForEach-Object {
 			$bookFile = $_
-			Write-Debug "== Processing File > $($bookFile.Name)"
+			Write-Debug "== Processing File > [$($bookFile.Name)]"
 			
             # Process book file if it conforms to book naming pattern
             if ($bookFile.Name -match '^(.*?)_' -and -not $bookFile.Name.contains("_cover")) {
@@ -80,14 +80,15 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
             }
 			elseif (-not $bookFile.Name.contains("_cover")){				
 				# Report an error only if it is not a cover image file
-				Write-Debug "== Skipping File >>> $($bookFile.Name): Name does not match regex pattern for book"
+				Write-Debug "== Skipping File >>> [$($bookFile.Name)]: Name does not match regex pattern for book"
 				Write-Information "$($bookFile.DirectoryName), $($bookFile.Name), File not properly named "
 				$errorCount++
 			}
         }
     } else {
 		$authorsSkippedCount++
-		Write-Information "Skipping Author Folder   > $($authorFolder.Name): Name does not match regex pattern for author"		
+		Write-Debug "Skipping Author Folder   > [$($authorFolder.Name)]: Name does not match regex pattern for author"
+		Write-Information "$($authorFolder.Name), , Folder does not appear to be an author name "
 	}
 }
 
