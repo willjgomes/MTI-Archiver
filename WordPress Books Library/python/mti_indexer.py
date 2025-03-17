@@ -34,11 +34,13 @@ class MTIIndexer:
 	@staticmethod
 	def start(mticonfig: MTIConfig):
 		folder_to_index = ""
-		try:
-			folder_to_index = mticonfig.ini[mticonfig.archive_sectkey]['DocumentFolder']
-		except KeyError:
+		try:						
+			folder_to_index = mticonfig.ini[mticonfig.archive_sectkey]['DocumentFolder'].strip()
+			if len(folder_to_index) <= 0: raise ValueError() 
+		except (KeyError, ValueError) as e:
 			raise IndexerException(f"{mticonfig.archive_sectkey} DocumentFolder not specified in settings.ini.")
 
+		# Setup output filenames for indexer
 		timestamp = mticonfig.get_timestamp()
 		file_prefix = f'{mticonfig.archive_key}_{timestamp}'		
 		index_output_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index.csv')
@@ -51,9 +53,10 @@ class MTIIndexer:
 		#Powershell command arguments for indexer script
 		ps_command = f"& '{mticonfig.indexer_script}' -foldersPath '{folder_to_index}' -outputCSV '{index_output_file}' "
 		ps_command += f"6> '{index_error_file}' "
-		ps_command += f"-Debug 5> '{index_debug_file}' " if (mticonfig.ini['DEBUG']['indexer'].lower() == 'true') else ""	# Enable debug if set  
+		ps_command += f"-Debug 5> '{index_debug_file}' " if mticonfig.debug_flag('indexer') else ""	# Enable debug if set  
 
 		#print(ps_command)
+
 
 		result = subprocess.run([
 			"powershell",
@@ -61,37 +64,49 @@ class MTIIndexer:
 			"-Command", ps_command
 		])
 
+		if (result.returncode != 0):
+			raise IndexerException("Error encountered in Powershell script to process folder.")
+
 		# Update some archiver data
 		mticonfig.exe_details[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp		
 		mticonfig.exe_summary[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp
-		mticonfig.exe_summary[MTIDataKey.LAST_IDXR_ARCHIVE_KEY] = mticonfig.archive_key
+		mticonfig.exe_summary[MTIDataKey.LAST_IDXR_ARCHIVE_KEY] = mticonfig.archive_key		
 
-		# Check if current index generated is identical to last time index generated
-		last_idx_identical = False
+		# Check current indexer output to output from last execution
 		last_idx_gen_dt	   = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
+		changes_found = False
 		if last_idx_gen_dt:
 			last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index.csv')
 			last_idx_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index_Error.csv')
+
+			# If last index output is same as current, no chances since las execution, then
+			# delete output, no need to keep them around
 			if (filecmp.cmp(index_output_file, last_idx_output_file, shallow=False) and
 			   filecmp.cmp(index_error_file, last_idx_error_file, shallow=False)):
-				last_idx_identical = True
 				os.remove(index_output_file)
 				os.remove(index_debug_file)
 				os.remove(index_error_file)
 				print(mticonfig.idtab, "No new documents found since last time indexed.")
 
+			# Check for new items if current index is different from last time
+			else:
+				changes_found = True
+				last_idx_loaded_file		= last_idx_output_file
+				newlines = MTIIndexer.find_new_lines(last_idx_loaded_file, index_output_file)				
+				
+				print(mticonfig.idtab, 'New Documents Identified   :', len(newlines))
 
-		# Check for new items if current index is different from last time
-		if not last_idx_identical:
-			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_FILE_DT] = timestamp
-			last_idx_loaded_file		= last_idx_output_file
-			newlines = MTIIndexer.find_new_lines(last_idx_loaded_file, index_output_file)
+				# Print the new lines in file2
+				for line in newlines:
+					print(line.strip())
+		
+		# The entire index is new, likely the firs time indexer run on this archive folder
+		else:
+			changes_found = True
 
-			print(mticonfig.idtab, 'New Documents Identified   :', len(newlines))
-
-			# Print the new lines in file2
-			for line in newlines:
-				print(line.strip())
+		# Update the last generated file date, since new index contains changes
+		if changes_found:
+			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_FILE_DT]  = timestamp
 			
 		mticonfig.save_archiver_data()
 
