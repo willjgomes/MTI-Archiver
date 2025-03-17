@@ -8,7 +8,7 @@
 
 #Input Parameters
 param (
-	[string]$foldersPath,		#Path to authors folder
+	[string]$foldersPath,		#Path to authors folder (empty folder processes current directory)
 	[string]$outputCSV,			#Path to output filename
     [switch]$Debug				#Turn on debugging
 )
@@ -29,6 +29,7 @@ $data = @()
 $authorsProcessedCount = 0
 $documentProcessedCount = 0
 $authorsSkippedCount = 0
+$documentSkippedCount = 0
 $errorCount = 0
 
 Write-Information "Author Directory, File Name, Error"
@@ -82,11 +83,13 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
 				# Report an error only if it is not a cover image file
 				Write-Debug "== Skipping File >>> [$($bookFile.Name)]: Name does not match regex pattern for book"
 				Write-Information "$($bookFile.DirectoryName), $($bookFile.Name), File not properly named "
+				$documentSkippedCount
 				$errorCount++
 			}
         }
     } else {
 		$authorsSkippedCount++
+		$errorCount++
 		Write-Debug "Skipping Author Folder   > [$($authorFolder.Name)]: Name does not match regex pattern for author"
 		Write-Information "$($authorFolder.Name), , Folder does not appear to be an author name "
 	}
@@ -98,6 +101,7 @@ $data | Export-Csv -Path $outputCSV -NoTypeInformation
 Write-Output "`Indexing Summary (Powershell) "
 Write-Output "`t==> Index file created: at $outputCSV"
 Write-Output "`t==> Author Folders Procssed: $authorsProcessedCount"
-Write-Output "`t==> Author Folders Skipped : $authorsSkippedCount"
+Write-Output "`t==> Author Folders Skipped : $authorsSkippedCount (Docs in these folder not procssed)"
 Write-Output "`t==> Documents Identified   : $documentProcessedCount"
+Write-Output "`t==> Documents Skipped      : $documentSkippedCount"
 Write-Output "`t==> Document Errors        : $errorCount (See ...Index_Error.csv file)"
