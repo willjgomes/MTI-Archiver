@@ -1,5 +1,5 @@
 import stat,subprocess, filecmp, difflib, os
-from mti_config import MTIDataKey
+from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
 class IndexerException(Exception):
@@ -32,11 +32,15 @@ class MTIIndexer:
 
 	# This method starts the indexing process based on the current collection & document type selected
 	@staticmethod
-	def start(mticonfig):
+	def start(mticonfig: MTIConfig):
+		folder_to_index = ""
+		try:
+			folder_to_index = mticonfig.ini[mticonfig.archive_sectkey]['DocumentFolder']
+		except KeyError:
+			raise IndexerException(f"{mticonfig.archive_sectkey} DocumentFolder not specified in settings.ini.")
+
 		timestamp = mticonfig.get_timestamp()
-		file_prefix = f'{mticonfig.coll_doct_key}_{timestamp}'
-		mticonfig.exe_details['Index Run Date Time'] = timestamp		
-		folder_to_index		= mticonfig.ini[mticonfig.coll_doct_sectkey]['DocumentFolder']
+		file_prefix = f'{mticonfig.archive_key}_{timestamp}'		
 		index_output_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index.csv')
 		index_debug_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_Debug.txt')
 		index_error_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_Error.csv')
@@ -57,12 +61,17 @@ class MTIIndexer:
 			"-Command", ps_command
 		])
 
+		# Update some archiver data
+		mticonfig.exe_details[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp		
+		mticonfig.exe_summary[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp
+		mticonfig.exe_summary[MTIDataKey.LAST_IDXR_ARCHIVE_KEY] = mticonfig.archive_key
+
 		# Check if current index generated is identical to last time index generated
 		last_idx_identical = False
-		last_idx_gen_dt	   = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_DT)
+		last_idx_gen_dt	   = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
 		if last_idx_gen_dt:
-			last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.coll_doct_key + '_' + last_idx_gen_dt + '_Index.csv')
-			last_idx_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.coll_doct_key + '_' + last_idx_gen_dt + '_Index_Error.csv')
+			last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index.csv')
+			last_idx_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index_Error.csv')
 			if (filecmp.cmp(index_output_file, last_idx_output_file, shallow=False) and
 			   filecmp.cmp(index_error_file, last_idx_error_file, shallow=False)):
 				last_idx_identical = True
@@ -74,7 +83,7 @@ class MTIIndexer:
 
 		# Check for new items if current index is different from last time
 		if not last_idx_identical:
-			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_DT] = timestamp
+			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_FILE_DT] = timestamp
 			last_idx_loaded_file		= last_idx_output_file
 			newlines = MTIIndexer.find_new_lines(last_idx_loaded_file, index_output_file)
 
@@ -84,7 +93,7 @@ class MTIIndexer:
 			for line in newlines:
 				print(line.strip())
 			
-		mticonfig.save_execution_details()
+		mticonfig.save_archiver_data()
 
 
 

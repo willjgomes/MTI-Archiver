@@ -5,8 +5,11 @@ import stat
 from xml.sax.handler import property_declaration_handler
 
 class MTIDataKey:
-	LAST_INDEXER_RUN_DT	= "Index Run Date Time"
-	LAST_IDX_GEN_DT		= "Last Index Generated"
+	LAST_INDEXER_RUN_DT		= "Last Indexer Run Date"
+	LAST_IDX_GEN_FILE_DT	= "Last Index Generated File Date"
+	LAST_IDX_LOAD_FILE_DT	= "Last Index Loaded File Date"
+	SUMMARY_KEY				= "mti_archiver_summary"
+	LAST_IDXR_ARCHIVE_KEY	= "Last Archive Indexed"
 
 
 class MTIConfig:
@@ -24,17 +27,22 @@ class MTIConfig:
 		# Get config from settings file
 		self.ini = self.load_config()
 
-		# Set some default config attributes
-		self.output_dir		= self.ini['Settings']['ScriptDataFolder']
+		# Load INI file config attributes
+		self.output_dir	= self.ini['Settings']['ScriptDataFolder']
 		self.coll_list	= [str.strip() for str in self.ini['Settings']['Collections'].split(",")]
 		self.doct_list	= [str.strip() for str in self.ini['Settings']['DocumentTypes'].strip().split(",")]
+
+		# Load DAT JSON file config attributes
+		self.dat		= self.load_archiver_data()
 
 		# Default the active Collection and DocumentType to 0 (TODO: Load from dat file)
 		self.coll_idx	= 0
 		self.doct_idx	= 0
 
-		# Get the JSON data previous execution details and intialize default details for collection
-		self.dat, self.exe_details = self.load_execution_details()
+		# Get the previous execution JSON detail objects, intialize details if they don't exist
+		self.exe_details	= self.get_exe_details()
+		self.exe_summary	= self.dat.get(MTIDataKey.SUMMARY_KEY) if self.dat.get(MTIDataKey) else {}
+
 
 	# Define Active Collection and Document Type property to store active Settings during execution
 	# This are defined this way to prevent setting of these properties directly, as it is controlled
@@ -44,12 +52,14 @@ class MTIConfig:
 	#----------------------------------------------------------------------------------------------
 	@property
 	def coll_idx(self):
-		return self._coll_idx
+		return self.__coll_idx
 
 	@coll_idx.setter
 	def coll_idx(self, new_value):
-		self._coll_idx = new_value
-		self._coll_key = MTIConfig.fileNameFormat(self.coll_list[self.coll_idx])
+		if not hasattr(self,'__coll_idx') or self.__coll_idx != new_value:
+			self.__coll_idx = new_value
+			self.__coll_key = MTIConfig.fileNameFormat(self.coll_list[self.coll_idx])
+			self.exe_details = self.get_exe_details()
 
 	@property
 	def coll_name(self):
@@ -57,23 +67,26 @@ class MTIConfig:
 
 	@property
 	def doct_idx(self):
-		return self._coll_idx
+		return self.__doct_idx
 
 	@doct_idx.setter
 	def doct_idx(self, new_value):
-		self._doct_idx = new_value
-		self._doct_key = MTIConfig.fileNameFormat(self.doct_list[self.doct_idx])
+		if (not hasattr(self,'__doct_idx') or self.__doct_idx != new_value):
+			self.__doct_idx = new_value
+			self.__doct_key = MTIConfig.fileNameFormat(self.doct_list[self.doct_idx])
+			self.exe_details = self.get_exe_details()
 
 	@property
 	def doct_name(self):
 		return self.doct_list[self.doct_idx]
 
 	@property
-	def coll_doct_key(self):
-		return f'{self._coll_key}_{self._doct_key}'
+	def archive_key(self):
+		#Note in constructor doct_key may still not have been initialized
+		return f'{self.__coll_key}_{self.__doct_key}' if hasattr(self,'_MTIConfig__doct_key') else ""
 
 	@property
-	def coll_doct_sectkey(self):
+	def archive_sectkey(self):
 		return f'{self.coll_name}:{self.doct_name}'
 
 	#----------------------------------------------------------------------------------------------
@@ -90,21 +103,20 @@ class MTIConfig:
 
 		return _config_parser
 
-	def load_execution_details(self):
+	def load_archiver_data(self):
 		data = {}
-		details = {}
 		# Load existing data
 		try:
 			with open(MTIConfig.data_file, 'r') as file:
 				data = json.load(file)
-			details = data[self.coll_doct_key]
 		except IOError:
 			print('WARNING: Missing previous execution data.')
 	
-		return data,details
+		return data
 
-	def save_execution_details(self):
-		self.dat[self.coll_doct_key] = self.exe_details
+	def save_archiver_data(self):
+		self.dat[self.archive_key]			= self.exe_details
+		self.dat[MTIDataKey.SUMMARY_KEY]	= self.exe_summary
 
 		try:
 			with open(MTIConfig.data_file, 'w') as file:
@@ -114,6 +126,8 @@ class MTIConfig:
 		except IOError:
 			print('ERROR Saving execution details. Please verify output and loading.')
 
+	def get_exe_details(self):
+		return self.dat.get(self.archive_key) if self.dat.get(self.archive_key) else {}
 
 	@staticmethod
 	def extract_timestamp(file_name):

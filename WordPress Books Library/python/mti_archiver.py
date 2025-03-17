@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from turtle import update
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
@@ -12,7 +13,7 @@ mticonfig = MTIConfig()
 
 def get_last_file(file_suffix):
 	directory = Path(MTIConfig.output_dir)
-	pattern = f'{mticonfig.coll_doct_key}_*_{file_suffix}'
+	pattern = f'{mticonfig.archive_key}_*_{file_suffix}'
 	files = list(directory.glob(pattern))
 
 	return max(files, key=MTIConfig.extract_timestamp)
@@ -27,9 +28,12 @@ class MenuItem:
 def launch_indexer():
 	try:
 		MTIIndexer.start(mticonfig)
+		updateMenuText()
+
 		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 	except IndexerException as ie:
-		print("\nAborted Processing!\n    !!! ", ie)
+		print("\nUnable to run Indexer!\n    !!! ", ie)
+		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 
 def get_collection():
 	coll_idx = SelectionMenu.get_selection(mticonfig.coll_list, f"Collection [{mticonfig.coll_name}]", "Select to change:")
@@ -40,7 +44,7 @@ def get_collection():
 
 def get_doc_type():
 	doct_idx = SelectionMenu.get_selection(mticonfig.doct_list, f"Document Type [{mticonfig.doct_name}]", "Select to change:")
-	if (mticonfig.doct_idx < len(mticonfig.doct_list)):
+	if (doct_idx < len(mticonfig.doct_list)):
 		mticonfig.doct_idx = doct_idx
 		MenuItem.doc_type_settings.text		= f"Document Type: [{mticonfig.doct_name}]"
 		updateMenuText()
@@ -60,12 +64,12 @@ def get_settings_menu():
 	return menu
 
 def updateMenuText():
-	menu.epilogue_text = f"Current Collection: {mticonfig.coll_name}->{mticonfig.doct_name}\n"
+	menu.epilogue_text = f"Current Collection [ {mticonfig.archive_sectkey} ]\n" 
 
 	if (len(mticonfig.exe_details) == 0):
-		menu.epilogue_text += "Last processed on: Never\n"
+		menu.epilogue_text += "Last processed on [ Never ]\n"
 	else:
-		menu.epilogue_text += f"Last processed on: {mticonfig.exe_details[MTIDataKey.LAST_INDEXER_RUN_DT]}"
+		menu.epilogue_text += f"Last processed on [ {mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)} ]"
 
 def create_main_menu():
 	menu = ConsoleMenu("Archiving Main Menu", clear_screen=False)
@@ -92,7 +96,7 @@ updateMenuText()
 # Show the main menu
 menu.show()
 
-mticonfig.save_execution_details()
+mticonfig.save_archiver_data()
 
 
 # END PROGRAM --------------------------------------------------------------------------------------------
