@@ -8,7 +8,7 @@ from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
 from mti_config import MTIConfig, MTIDataKey
 
-# Setup Global Variables
+# Setup Global Variables, note config is loaded when created, no need to call load again
 mticonfig = MTIConfig()
 
 def get_last_file(file_suffix):
@@ -72,7 +72,7 @@ def updateMenuText():
 		menu.epilogue_text += f"Last processed on [ {mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)} ]"
 
 def create_main_menu():
-	menu = ConsoleMenu("Archiving Main Menu", clear_screen=False)
+	menu = ConsoleMenu("Archiving Main Menu", clear_screen=not mticonfig.debug_flag('menu'))
 	
 	menu.append_item(SubmenuItem("Settings", get_settings_menu(), menu=menu))
 	menu.append_item(FunctionItem(f'Run Indexer', launch_indexer))
@@ -81,7 +81,7 @@ def create_main_menu():
 
 # BEGIN PROGRAM ---------------------------------------------------------------------------------------
 
-mticonfig.load_config()
+input("Press enter to continue")
 
 # Setup directories
 os.makedirs(mticonfig.output_dir, exist_ok=True)		# Output Directory

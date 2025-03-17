@@ -1,6 +1,7 @@
 import configparser, json
 from datetime import datetime
 from pathlib import Path
+from sqlite3 import ProgrammingError
 import stat
 from xml.sax.handler import property_declaration_handler
 
@@ -10,6 +11,7 @@ class MTIDataKey:
 	LAST_IDX_LOAD_FILE_DT	= "Last Index Loaded File Date"
 	SUMMARY_KEY				= "mti_archiver_summary"
 	LAST_IDXR_ARCHIVE_KEY	= "Last Archive Indexed"
+	PROGRAM_RUN_DT			= "Program Run Date"
 
 
 class MTIConfig:
@@ -24,10 +26,10 @@ class MTIConfig:
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
 	def __init__(self):
-		# Get config from settings file
-		self.ini = self.load_config()
+		# Load INI config from settings/archive.ini file
+		self.ini = self.load_ini()
 
-		# Load INI file config attributes
+		# Load INI config attributes
 		self.output_dir	= self.ini['Settings']['ScriptDataFolder']
 		self.coll_list	= [str.strip() for str in self.ini['Settings']['Collections'].split(",")]
 		self.doct_list	= [str.strip() for str in self.ini['Settings']['DocumentTypes'].strip().split(",")]
@@ -41,7 +43,7 @@ class MTIConfig:
 
 		# Get the previous execution JSON detail objects, intialize details if they don't exist
 		self.exe_details	= self.get_exe_details()
-		self.exe_summary	= self.dat.get(MTIDataKey.SUMMARY_KEY) if self.dat.get(MTIDataKey) else {}
+		self.exe_summary	= self.dat.get(MTIDataKey.SUMMARY_KEY) if self.dat.get(MTIDataKey.SUMMARY_KEY) else {}
 
 
 	# Define Active Collection and Document Type property to store active Settings during execution
@@ -91,7 +93,7 @@ class MTIConfig:
 
 	#----------------------------------------------------------------------------------------------
 
-	def load_config(self):
+	def load_ini(self):
 		_config_parser = configparser.ConfigParser()
 
 		try:
@@ -115,9 +117,11 @@ class MTIConfig:
 		return data
 
 	def save_archiver_data(self):
+		self.exe_summary[MTIDataKey.PROGRAM_RUN_DT] = str(datetime.now())
+		
 		self.dat[self.archive_key]			= self.exe_details
 		self.dat[MTIDataKey.SUMMARY_KEY]	= self.exe_summary
-
+		
 		try:
 			with open(MTIConfig.data_file, 'w') as file:
 				json.dump(self.dat, file, indent=4)
@@ -128,6 +132,17 @@ class MTIConfig:
 
 	def get_exe_details(self):
 		return self.dat.get(self.archive_key) if self.dat.get(self.archive_key) else {}
+
+	def debug_flag(self, key):
+		return self.ini['DEBUG'][key].lower() == 'true'
+
+	@staticmethod
+	def printini(configparser):
+		for section in configparser.sections():
+			print(f"[{section}]")
+			for key, value in configparser.items(section):
+				print(f"<{key}> = <{value}>")
+			print()
 
 	@staticmethod
 	def extract_timestamp(file_name):
