@@ -1,4 +1,5 @@
-import stat,subprocess, filecmp, difflib, os
+import subprocess, filecmp, difflib, os
+import author_doc_scan
 from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
@@ -50,22 +51,8 @@ class MTIIndexer:
 		print("Indexing started")
 		print(mticonfig.idtab, "Document Folder", folder_to_index)
 	
-		#Powershell command arguments for indexer script
-		ps_command = f"& '{mticonfig.indexer_script}' -foldersPath '{folder_to_index}' -outputCSV '{index_output_file}' "
-		ps_command += f"6> '{index_error_file}' "
-		ps_command += f"-Debug 5> '{index_debug_file}' " if mticonfig.debug_flag('indexer') else ""	# Enable debug if set  
-
-		#print(ps_command)
-
-
-		result = subprocess.run([
-			"powershell",
-			"-ExecutionPolicy", "Bypass",
-			"-Command", ps_command
-		])
-
-		if (result.returncode != 0):
-			raise IndexerException("Error encountered in Powershell script to process folder.")
+		#run_powershell_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
+		run_python_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
 
 		# Update some archiver data
 		mticonfig.exe_details[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp		
@@ -110,5 +97,22 @@ class MTIIndexer:
 			
 		mticonfig.save_archiver_data()
 
+def run_powershell_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
+	#Powershell command arguments for indexer script
+	ps_command = f"& '{mticonfig.indexer_script}' -foldersPath '{folder_to_index}' -outputCSV '{index_output_file}' "
+	ps_command += f"6> '{index_error_file}' "
+	ps_command += f"-Debug 5> '{index_debug_file}' " if mticonfig.debug_flag('indexer') else ""	# Enable debug if set  
 
+	#print(ps_command)
 
+	result = subprocess.run([
+		"powershell",
+		"-ExecutionPolicy", "Bypass",
+		"-Command", ps_command
+	])
+
+	if (result.returncode != 0):
+		raise IndexerException("Error encountered in Powershell script to process folder.")
+
+def run_python_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
+	author_doc_scan.process_author_folder(folder_to_index, mticonfig.doct_name, index_output_file, index_debug_file, index_error_file, mticonfig.debug_flag('indexer'))

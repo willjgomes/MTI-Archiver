@@ -1,8 +1,6 @@
 import configparser, json
 from datetime import datetime
 from pathlib import Path
-from sqlite3 import ProgrammingError
-import stat
 from xml.sax.handler import property_declaration_handler
 
 class MTIDataKey:
@@ -12,7 +10,8 @@ class MTIDataKey:
 	SUMMARY_KEY				= "mti_archiver_summary"
 	LAST_IDXR_ARCHIVE_KEY	= "Last Archive Indexed"
 	PROGRAM_RUN_DT			= "Program Run Date"
-
+	COLLECTION              = "Selected Collection"
+	DOCUMENT_TYPE			= "Selected Document Type"
 
 class MTIConfig:
 
@@ -26,25 +25,26 @@ class MTIConfig:
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
 	def __init__(self):
-		# Load INI config from settings/archive.ini file
-		self.ini = self.load_ini()
 
-		# Load INI config attributes
-		self.output_dir	= self.ini['Settings']['ScriptDataFolder']
-		self.coll_list	= [str.strip() for str in self.ini['Settings']['Collections'].split(",")]
-		self.doct_list	= [str.strip() for str in self.ini['Settings']['DocumentTypes'].strip().split(",")]
+		# Load INI from archive.ini file
+		self.load_ini()
 
 		# Load DAT JSON file config attributes
 		self.dat		= self.load_archiver_data()
 
-		# Default the active Collection and DocumentType to 0 (TODO: Load from dat file)
-		self.coll_idx	= 0
-		self.doct_idx	= 0
+		# Get the previous execution JSON summary object, intialize if it doesn't exist
+		self.exe_summary	= self.dat.get(MTIDataKey.SUMMARY_KEY) if self.dat.get(MTIDataKey.SUMMARY_KEY) else {}
+		
+		# Load previous Collection and DocumentType or default to 0
+		if self.exe_summary.get(MTIDataKey.COLLECTION):
+			self.coll_idx	= self.coll_list.index(self.exe_summary[MTIDataKey.COLLECTION])
+			self.doct_idx	= self.doct_list.index(self.exe_summary[MTIDataKey.DOCUMENT_TYPE])
+		else:
+			self.coll_idx	= 0
+			self.doct_idx	= 0
 
 		# Get the previous execution JSON detail objects, intialize details if they don't exist
-		self.exe_details	= self.get_exe_details()
-		self.exe_summary	= self.dat.get(MTIDataKey.SUMMARY_KEY) if self.dat.get(MTIDataKey.SUMMARY_KEY) else {}
-
+		self.exe_details	= self.get_exe_details()		
 
 	# Define Active Collection and Document Type property to store active Settings during execution
 	# This are defined this way to prevent setting of these properties directly, as it is controlled
@@ -93,17 +93,29 @@ class MTIConfig:
 
 	#----------------------------------------------------------------------------------------------
 
-	def load_ini(self):
-		_config_parser = configparser.ConfigParser()
+	# This is overwritten since output_dir needs to be dynamically created based on archive selected
+	@property
+	def output_dir(self):
+		return self.data_dir + "/" + self.archive_key
 
+
+	def load_ini(self):
+		# Intiialize ini to config parser
+		self.ini = configparser.ConfigParser()
+
+		# Load INI from file
 		try:
 			with open(MTIConfig.settings_file) as f:
 				print("Settings File Detected:\n\t==>", MTIConfig.settings_file)
-				_config_parser.read_file(f)
+				self.ini.read_file(f)
 		except IOError:
 			print("Settings file not found")
 
-		return _config_parser
+		# Load INI config attributes
+		self.data_dir	= self.ini['Settings']['ScriptDataFolder']
+		self.coll_list	= [str.strip() for str in self.ini['Settings']['Collections'].split(",")]
+		self.doct_list	= [str.strip() for str in self.ini['Settings']['DocumentTypes'].strip().split(",")]
+
 
 	def load_archiver_data(self):
 		data = {}
@@ -118,6 +130,8 @@ class MTIConfig:
 
 	def save_archiver_data(self):
 		self.exe_summary[MTIDataKey.PROGRAM_RUN_DT] = str(datetime.now())
+		self.exe_summary[MTIDataKey.COLLECTION] = self.coll_name
+		self.exe_summary[MTIDataKey.DOCUMENT_TYPE] = self.doct_name
 		
 		self.dat[self.archive_key]			= self.exe_details
 		self.dat[MTIDataKey.SUMMARY_KEY]	= self.exe_summary

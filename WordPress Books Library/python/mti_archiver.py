@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from pickle import NONE
 from turtle import update
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
@@ -9,7 +10,7 @@ from mti_indexer import MTIIndexer, IndexerException
 from mti_config import MTIConfig, MTIDataKey
 
 # Setup Global Variables, note config is loaded when created, no need to call load again
-mticonfig = MTIConfig()
+mticonfig = None
 
 def get_last_file(file_suffix):
 	directory = Path(MTIConfig.output_dir)
@@ -27,6 +28,9 @@ class MenuItem:
 
 def launch_indexer():
 	try:
+		# Setup directories for archive
+		os.makedirs(mticonfig.output_dir, exist_ok=True)		# Output Directory
+
 		MTIIndexer.start(mticonfig)
 		updateMenuText()
 
@@ -81,22 +85,24 @@ def create_main_menu():
 
 # BEGIN PROGRAM ---------------------------------------------------------------------------------------
 
-input("Press enter to continue")
+try:
+	mticonfig = MTIConfig()
+	input("Press enter to continue")
 
-# Setup directories
-os.makedirs(mticonfig.output_dir, exist_ok=True)		# Output Directory
+	# shutil.rmtree(temp_dir)								# Delete Existing Temp Directory??
+	os.makedirs(mticonfig.temp_dir, exist_ok=True)			# Temporary Working Directory
 
-# shutil.rmtree(temp_dir)								# Delete Existing Temp Directory??
-os.makedirs(mticonfig.temp_dir, exist_ok=True)			# Temporary Working Directory
+	# Create the application menu
+	menu = create_main_menu()
+	updateMenuText()
 
-# Create the application menu
-menu = create_main_menu()
-updateMenuText()
+	# Show the main menu
+	menu.show()
 
-# Show the main menu
-menu.show()
-
-mticonfig.save_archiver_data()
+	mticonfig.save_archiver_data()
+except Exception as e:
+	print("\nThe following eroor occured:\n\n")
+	print(e, "\n")
 
 
 # END PROGRAM --------------------------------------------------------------------------------------------

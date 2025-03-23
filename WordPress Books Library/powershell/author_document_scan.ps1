@@ -44,7 +44,7 @@ Get-ChildItem -Path $foldersPath -Directory | ForEach-Object {
 
 	# Process Author Folders if it can be split into first, middle, and/or last name components 
 	# allowing various formats (e.g., F.M._Last, F._Middle_last, Firs_Last, etc. allows hypens, apostropes in last name)
-	if ($authorFolder.Name -match "^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+|D(?:a|e)_(?:[A-Za-z0-9.'`-]+|La_[A-Za-z0-9.'`-]+))$") {	
+	if ($authorFolder.Name -match "^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+|D(?:a|e)_(?:[A-Za-z0-9.'`-]+|La_[A-Za-z0-9.'`-]+))$") {			                            
 		$authorsProcessedCount++
 
 		# Store the first, middle, and last parts
@@ -101,7 +101,7 @@ $data | Export-Csv -Path $outputCSV -NoTypeInformation
 Write-Output "`Indexing Summary (Powershell) "
 Write-Output "`t==> Index file created: at $outputCSV"
 Write-Output "`t==> Author Folders Procssed: $authorsProcessedCount"
-Write-Output "`t==> Author Folders Skipped : $authorsSkippedCount (Docs in these folder not procssed)"
+Write-Output "`t==> Author Folders Skipped : $authorsSkippedCount (Note: Docs in skipped folders not procssed)"
 Write-Output "`t==> Documents Identified   : $documentProcessedCount"
 Write-Output "`t==> Documents Skipped      : $documentSkippedCount"
-Write-Output "`t==> Document Errors        : $errorCount (See ...Index_Error.csv file)"
+Write-Output "`t==> Errors Encountered     : $errorCount (See ...Index_Error.csv file)"
