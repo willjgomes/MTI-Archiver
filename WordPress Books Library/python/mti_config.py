@@ -5,6 +5,7 @@ from xml.sax.handler import property_declaration_handler
 
 class MTIDataKey:
 	LAST_INDEXER_RUN_DT		= "Last Indexer Run Date"
+	LAST_WP_LOADER_RUN_DT	= "Last Wordpress Loader Run Date"
 	LAST_IDX_GEN_FILE_DT	= "Last Index Generated File Date"
 	LAST_IDX_LOAD_FILE_DT	= "Last Index Loaded File Date"
 	SUMMARY_KEY				= "mti_archiver_summary"
@@ -176,3 +177,10 @@ class MTIConfig:
 	def get_timestamp():
 		return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+	@staticmethod
+	def convert_to_datetime(timestamp_str):
+		if (timestamp_str):
+			return datetime.strptime(timestamp_str, "%Y-%m-%d_%H-%M-%S")
+		else:
+			return None
+		

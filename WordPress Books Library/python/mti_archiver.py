@@ -8,7 +8,8 @@ from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
 from mti_config import MTIConfig, MTIDataKey
-import google_csv_loader
+import google_csv_loader, wp_loader_main
+import traceback
 
 # Setup Global Variables, note config is loaded when created, no need to call load again
 mticonfig = None
@@ -43,6 +44,20 @@ def launch_indexer():
 		input("\nIndexing successfull! Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 	except IndexerException as ie:
 		print("\nUnable to run Indexer!\n    !!! ", ie)
+		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
+
+# WordPress loader program/function to load the new index output to WP Books Gallery Plugin
+def launch_wp_loader():
+	try:
+		wp_loader_main.load(mticonfig)
+		input("Press enter to continue.")
+	except Exception as e:
+		print("\nUnexpected Error occured running Word Press Loader!\n")
+		print("=========================================================================================================================")
+		print("Error Details:")
+		print("=========================================================================================================================")
+		traceback.print_exc()
+		print("=========================================================================================================================\n")
 		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 
 def get_collection():
@@ -86,6 +101,7 @@ def create_main_menu():
 	
 	menu.append_item(SubmenuItem("Settings", get_settings_menu(), menu=menu))
 	menu.append_item(FunctionItem(f'Run Indexer', launch_indexer))
+	menu.append_item(FunctionItem(f'Run WordPress Loader', launch_wp_loader))
 
 	return menu
 

@@ -1,4 +1,4 @@
-import subprocess, filecmp, difflib, os
+import subprocess, filecmp, difflib, os, shutil
 import author_doc_scan
 from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
@@ -81,7 +81,7 @@ class MTIIndexer:
 				os.remove(index_output_file)
 				os.remove(index_debug_file)
 				os.remove(index_error_file)
-				print(mticonfig.idtab, "No new documents found since last time indexed.")
+				print("No new documents found since last time indexed.")
 
 			# Check for new items if current index is different from last time 
 			else:
@@ -101,17 +101,19 @@ class MTIIndexer:
 				with open(index_new_file, "w", encoding="utf-8") as file:
 					file.writelines(line for line in newlines)
 		
-		# The entire index is new, likely the firs time indexer run on this archive folder
+		# The entire index is new, likely the first time indexer run on this archive folder
 		else:
 			changes_found = True
+			#Copy the index file to new file
+			shutil.copy(index_output_file, index_new_file)
 
 		# Update the last generated file date, since new index contains changes
 		if changes_found:
 			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_FILE_DT]  = timestamp
+			print(f"\t==> Index file created: {index_new_file}")
 		
 		print()
 		mticonfig.save_archiver_data()
-		print()
 
 def run_powershell_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
 	#Powershell command arguments for indexer script

@@ -78,7 +78,6 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
             file.writelines(line + "\n" for line in idx_debug)
     
     print("\nIndexing Summary (Python)")
-    print(f"\t==> Index file created: at {index_csv}")
     print(f"\t==> Author Folders Processed: {authors_processed_count}")
     print(f"\t==>     Documents Identified: {document_processed_count}")
     print(f"\t==>        Documents Skipped: {document_skipped_count}")
