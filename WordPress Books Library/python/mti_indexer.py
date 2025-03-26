@@ -25,6 +25,9 @@ class MTIIndexer:
 
 			# Extract only the new lines that are in file2
 			new_lines = [line[1:] for line in diff if line.startswith('+ ')]
+
+			# Add header row from
+			new_lines.insert(0, file1_lines[0])
 		
 			if (len(new_lines) >= len(file2_lines)):
 				raise IndexerException("Issues detected indexing file. Please verify correct document folder for collection & type")
@@ -47,6 +50,7 @@ class MTIIndexer:
 		index_output_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index.csv')
 		index_debug_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_Debug.txt')
 		index_error_file	= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_Error.csv')
+		index_new_file		= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_New.csv')
 	
 		print("Indexing started")
 		print(mticonfig.idtab, "Document Folder", folder_to_index)
@@ -59,12 +63,16 @@ class MTIIndexer:
 		mticonfig.exe_summary[MTIDataKey.LAST_INDEXER_RUN_DT]	= timestamp
 		mticonfig.exe_summary[MTIDataKey.LAST_IDXR_ARCHIVE_KEY] = mticonfig.archive_key		
 
+		
+		last_idx_gen_dt		= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
+		last_idx_load_dt	= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
+		
 		# Check current indexer output to output from last execution
-		last_idx_gen_dt	   = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
 		changes_found = False
 		if last_idx_gen_dt:
 			last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index.csv')
 			last_idx_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index_Error.csv')
+			
 
 			# If last index output is same as current, no chances since las execution, then
 			# delete output, no need to keep them around
@@ -75,17 +83,23 @@ class MTIIndexer:
 				os.remove(index_error_file)
 				print(mticonfig.idtab, "No new documents found since last time indexed.")
 
-			# Check for new items if current index is different from last time
+			# Check for new items if current index is different from last time 
 			else:
-				changes_found = True
-				last_idx_loaded_file		= last_idx_output_file
-				newlines = MTIIndexer.find_new_lines(last_idx_loaded_file, index_output_file)				
+				changes_found			= True				
+				
+				#index to compare will be last time index was loaded, 
+				#if never loaded then last time generated
+				if last_idx_load_dt:
+					idx_comp_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Index.csv')
+				else:
+					idx_comp_file = last_idx_output_file
+				
+				# Find the new lines
+				newlines = MTIIndexer.find_new_lines(idx_comp_file, index_output_file)				
 				
 				print(mticonfig.idtab, 'New Documents Identified   :', len(newlines))
-
-				# Print the new lines in file2
-				for line in newlines:
-					print(line.strip())
+				with open(index_new_file, "w", encoding="utf-8") as file:
+					file.writelines(line for line in newlines)
 		
 		# The entire index is new, likely the firs time indexer run on this archive folder
 		else:
@@ -94,8 +108,10 @@ class MTIIndexer:
 		# Update the last generated file date, since new index contains changes
 		if changes_found:
 			mticonfig.exe_details[MTIDataKey.LAST_IDX_GEN_FILE_DT]  = timestamp
-			
+		
+		print()
 		mticonfig.save_archiver_data()
+		print()
 
 def run_powershell_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
 	#Powershell command arguments for indexer script

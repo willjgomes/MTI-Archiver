@@ -53,14 +53,14 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
                             idx_debug[debug_idx] = debug_msg.replace("====", "[OK]")
                         except DocError as de:                                 
                             idx_debug.append(f"    <<<<<  ERROR!  >>>> {de.message}")
-                            idx_error.append({"AuthorDirectory":author_folder.name, "FileName":doc_file.name, "Error":de.message})
+                            idx_error.append({"Author Directory":author_folder.name, "File Name":doc_file.name, "Error":de.message})
                             document_skipped_count += 1
                             error_count += 1
             else:
                 authors_skipped_count += 1
                 error_count += 1
                 idx_debug.append(f"==    <<< FOLDER ERROR >>> [{author_folder.name}]: Name does not match regex pattern for author")
-                idx_error.append({"AuthorDirectory":author_folder.name,"Error":"Folder does not appear to be an author name"})
+                idx_error.append({"Author Directory":author_folder.name,"Error":"Folder does not appear to be an author name"})
     
     with open(index_csv, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=get_fieldnames(doct_name))
@@ -68,7 +68,7 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
         writer.writerows(idx_data)
 
     with open(index_error_csv, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["AuthorDirectory", "FileName", "Error"]
+        fieldnames = ["Author Directory", "File Name", "Error"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(idx_error)
@@ -89,21 +89,20 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
 
 def get_fieldnames(doct_name):
     fieldnames = [
-        'FirstName', 
-        'MiddleName',
-        'LastName',
-        f'{doct_name}Title',
-        f'{doct_name}File',
-        f'{doct_name}CoverFile',
-        'AuthorFolder',
-        'BasePath',
+        'First Name', 
+        'Middle Name',
+        'Last Name',
+        f'{doct_name} Title',
+        f'{doct_name} File',
+        f'{doct_name} Cover File',
+        'Author Folder',
+        'Base Path',
     ]
     if (doct_name == 'Article'):
         fieldnames[3:1] = [
             'Date',
             'Periodical'
         ]
-    print(fieldnames)
     return fieldnames
 
 
@@ -120,25 +119,25 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
                             
         # Initialize doc details dictionary record
         doc_record = {
-            "FirstName": firstname,
-            "MiddleName": middlename,
-            "LastName": lastname,
-            f"{doct_name}Title": title,
-            f"{doct_name}File": doc_file.name,
-            f"{doct_name}CoverFile": cover_file,
-            "AuthorFolder": author_folder.name,
-            "BasePath": folders_path
+            "First Name": firstname,
+            "Middle Name": middlename,
+            "Last Name": lastname,
+            f"{doct_name} Title": title,
+            f"{doct_name} File": doc_file.name,
+            f"{doct_name} Cover File": cover_file,
+            "Author Folder": author_folder.name,
+            "Base Path": folders_path
         }
 
         doc_record = add_doc_details(doct_name, doc_record)
     elif "_cover" not in doc_file.name:
-        raise DocError("{doct_name} not properly named. Title does not match regex pattern.")
+        raise DocError(f"{doct_name} not properly named. Title does not match regex pattern.")
 
     return doc_record
     
 def add_doc_details(doct_name, doc_record):
     if (doct_name == 'Article'):
-        title = doc_record.get('ArticleTitle')
+        title = doc_record.get('Article Title')
         parts = title.split('_')
 
         if len(parts) > 3:
@@ -151,7 +150,7 @@ def add_doc_details(doct_name, doc_record):
         doc_record.update({
             "Date":date.replace(" ", "-"),
             "Periodical":periodical,
-            "ArticleTitle":title
+            "Article Title":title
         })
 
     return doc_record

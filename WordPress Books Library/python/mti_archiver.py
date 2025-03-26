@@ -8,6 +8,7 @@ from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
 from mti_config import MTIConfig, MTIDataKey
+import google_csv_loader
 
 # Setup Global Variables, note config is loaded when created, no need to call load again
 mticonfig = None
@@ -26,15 +27,20 @@ class MenuItem:
 	collection_settings = FunctionItem(f'Collection', placeholder_func)
 	doc_type_settings	= FunctionItem(f'Document Type', placeholder_func)
 
+# Indexer program/function to scan and index the archive folder
 def launch_indexer():
 	try:
 		# Setup directories for archive
 		os.makedirs(mticonfig.output_dir, exist_ok=True)		# Output Directory
 
+		# Index the archive folder
 		MTIIndexer.start(mticonfig)
 		updateMenuText()
 
-		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
+		# Load index to google (TODO: Check Google Load flag)
+		google_csv_loader.load_csv_files(mticonfig)
+
+		input("\nIndexing successfull! Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 	except IndexerException as ie:
 		print("\nUnable to run Indexer!\n    !!! ", ie)
 		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils

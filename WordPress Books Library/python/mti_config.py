@@ -137,12 +137,13 @@ class MTIConfig:
 		self.dat[MTIDataKey.SUMMARY_KEY]	= self.exe_summary
 		
 		try:
+			print("Saving execution details ... .", end="")
 			with open(MTIConfig.data_file, 'w') as file:
 				json.dump(self.dat, file, indent=4)
 		
-			print("Program settings saved.")
+			print("done.")
 		except IOError:
-			print('ERROR Saving execution details. Please verify output and loading.')
+			print('ERROR occured. Please verify output and data.')
 
 	def get_exe_details(self):
 		return self.dat.get(self.archive_key) if self.dat.get(self.archive_key) else {}
