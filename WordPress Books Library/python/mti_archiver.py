@@ -42,7 +42,7 @@ def launch_indexer():
 		google_csv_loader.load_csv_files(mticonfig)
 
 		input("\nIndexing successfull! Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
-	except IndexerException as ie:
+	except Exception as ie:
 		print("\nUnable to run Indexer!\n    !!! ", ie)
 		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 
