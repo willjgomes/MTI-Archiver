@@ -22,7 +22,7 @@ class MTIConfig:
 	script_dir		= Path(__file__).parent.parent
 	temp_dir		= script_dir / 'temp'
 	settings_file	= script_dir / 'settings' / 'archive.ini'
-	data_file		= script_dir / 'settings' / 'mtiarchiver.dat'
+	data_file		= script_dir / 'settings' / 'mtiarchiver.json'
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
 	def __init__(self):
