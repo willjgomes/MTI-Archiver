@@ -361,5 +361,3 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/WordPress Books Library/settings/mtiarchiver.dat
-/WordPress Books Library/settings/mtiarchiver.json

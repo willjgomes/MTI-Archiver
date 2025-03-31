@@ -1,6 +1,7 @@
 import configparser, json
 from datetime import datetime
 from pathlib import Path
+from typing import Self
 from xml.sax.handler import property_declaration_handler
 
 class MTIDataKey:
@@ -20,9 +21,7 @@ class MTIConfig:
 
 	# Script Paths
 	script_dir		= Path(__file__).parent.parent
-	temp_dir		= script_dir / 'temp'
 	settings_file	= script_dir / 'settings' / 'archive.ini'
-	data_file		= script_dir / 'settings' / 'mtiarchiver.json'
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
 	def __init__(self):
@@ -117,12 +116,15 @@ class MTIConfig:
 		self.coll_list	= [str.strip() for str in self.ini['Settings']['Collections'].split(",")]
 		self.doct_list	= [str.strip() for str in self.ini['Settings']['DocumentTypes'].strip().split(",")]
 
+		# Setup temp dir
+		self.temp_dir		= Path(self.data_dir) / 'temp'
+		self.data_file		= Path(self.data_dir) / 'mtiarchiver.json'
 
 	def load_archiver_data(self):
 		data = {}
 		# Load existing data
 		try:
-			with open(MTIConfig.data_file, 'r') as file:
+			with open(self.data_file, 'r') as file:
 				data = json.load(file)
 		except IOError:
 			print('WARNING: Missing previous execution data.')
@@ -139,7 +141,7 @@ class MTIConfig:
 		
 		try:
 			print("Saving execution details ... .", end="")
-			with open(MTIConfig.data_file, 'w') as file:
+			with open(self.data_file, 'w') as file:
 				json.dump(self.dat, file, indent=4)
 		
 			print("done.")

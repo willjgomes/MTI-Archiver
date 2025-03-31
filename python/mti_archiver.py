@@ -28,6 +28,16 @@ class MenuItem:
 	collection_settings = FunctionItem(f'Collection', placeholder_func)
 	doc_type_settings	= FunctionItem(f'Document Type', placeholder_func)
 
+
+def print_error_details():
+	print("=========================================================================================================================")
+	print("Error Details:")
+	print("=========================================================================================================================")
+	traceback.print_exc()
+	print("=========================================================================================================================\n")
+	input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
+
+
 # Indexer program/function to scan and index the archive folder
 def launch_indexer():
 	try:
@@ -53,12 +63,7 @@ def launch_wp_loader():
 		input("Press enter to continue.")
 	except Exception as e:
 		print("\nUnexpected Error occured running Word Press Loader!\n")
-		print("=========================================================================================================================")
-		print("Error Details:")
-		print("=========================================================================================================================")
-		traceback.print_exc()
-		print("=========================================================================================================================\n")
-		input("Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
+		print_error_details()
 
 def get_collection():
 	coll_idx = SelectionMenu.get_selection(mticonfig.coll_list, f"Collection [{mticonfig.coll_name}]", "Select to change:")
@@ -123,8 +128,8 @@ try:
 
 	mticonfig.save_archiver_data()
 except Exception as e:
-	print("\nThe following eroor occured:\n\n")
-	print(e, "\n")
+	print("\nAn unxpected error occured running the Archiver Program!\n\n")
+	print_error_details()
 
 
 # END PROGRAM --------------------------------------------------------------------------------------------
