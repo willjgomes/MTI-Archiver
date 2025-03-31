@@ -29,8 +29,9 @@ class MTIIndexer:
 			# Add header row from
 			new_lines.insert(0, file1_lines[0])
 		
-			if (len(new_lines) >= len(file2_lines)):
-				raise IndexerException("Issues detected indexing file. Please verify correct document folder for collection & type")
+			# Check if more new lines than files indexed (account for header row, hence -1)
+			if ((len(new_lines) - 1) > len(file2_lines)):
+				raise IndexerException("Issues detected: More new items found than total items indexed. Verify data files created for archive.")
 
 			return new_lines
 
@@ -98,7 +99,7 @@ class MTIIndexer:
 				# Find the new lines
 				newlines = MTIIndexer.find_new_lines(idx_comp_file, index_output_file)				
 				
-				print(mticonfig.idtab, 'New Documents Identified   :', len(newlines))
+				print(mticonfig.idtab, 'New Documents Identified   :', len(newlines)-1)
 				with open(index_new_file, "w", encoding="utf-8") as file:
 					file.writelines(line for line in newlines)
 		
