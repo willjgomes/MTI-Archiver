@@ -1,4 +1,5 @@
 import os, csv, re
+from tqdm import tqdm
 
 class DocError(Exception):
    def __init__(self, message):
@@ -22,7 +23,9 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
     if doct_name[-1].lower() == 's':
         doct_name = doct_name[:-1]
        
-    for author_folder in os.scandir(folders_path):
+    
+    author_folders = list(os.scandir(folders_path))
+    for author_folder in tqdm(author_folders, desc="  Processing"):
         if author_folder.is_dir():
             
             idx_debug.append("==========================================================================================================================")
@@ -120,7 +123,7 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
         doc_record = {
             "First Name": firstname,
             "Middle Name": middlename,
-            "Last Name": lastname,
+            "Last Name": lastname.replace('_', ' '),
             f"{doct_name} Title": title,
             f"{doct_name} File": doc_file.name,
             f"{doct_name} Cover File": cover_file,

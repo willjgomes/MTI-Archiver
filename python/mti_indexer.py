@@ -53,7 +53,8 @@ class MTIIndexer:
 		index_new_file		= Path(mticonfig.output_dir + '/' + file_prefix + '_Index_New.csv')
 	
 		print("Indexing started")
-		print(mticonfig.idtab, "Document Folder", folder_to_index)
+		print("================")
+		print("  Document Folder", folder_to_index)
 	
 		#run_powershell_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
 		run_python_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
