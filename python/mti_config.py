@@ -152,7 +152,11 @@ class MTIConfig:
 		return self.dat.get(self.archive_key) if self.dat.get(self.archive_key) else {}
 
 	def debug_flag(self, key):
-		return self.ini['DEBUG'][key].lower() == 'true'
+		return self.bool_flag('DEBUG',key)
+
+	def bool_flag(self, section, key):
+		return self.ini[section][key].lower() == 'true'
+
 
 	@staticmethod
 	def printini(configparser):

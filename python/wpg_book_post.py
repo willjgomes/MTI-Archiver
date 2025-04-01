@@ -2,37 +2,13 @@
 import requests
 import base64
 import os
+from rich.console import Console
 
-
-# WordPress site details
-wp_site_url = "http://mti-sandbox-1.test"
-wp_username = "wgomes"  # Your WordPress username
-wp_password = "84m8 RNK7 gzpH 5q9u EzOd 1eeI"  # Your WordPress application password
-
-post_status = "publish"  # Options: 'publish', 'draft', etc.
-
-# Combine username and password in the format "username:password"
-credentials = f"{wp_username}:{wp_password}"
-
-# Base64 encode the credentials
-base64_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
-
-# Endpoint for creating standard WP post
-# wp_post_api_url = f"{wp_site_url}/wp-json/wp/v2/posts"
-
-# Endpoint for creating WPG Books post
-wp_books_post_api_url = f"{wp_site_url}/wp-json/wp/v2/books"
-
-# Endpoint for uploading media
-wp_media_api_url = f"{wp_site_url}/wp-json/wp/v2/media"
-
-# Libarary content download base URL
-download_url = f"{wp_site_url}/wp-content/library/"
-
-# Prepare the Authorization header with Base64 encoded credentials
-headers = {
-    "Authorization": "Basic " + base64_credentials
-}
+class WPGBookAPIException(Exception):
+   def __init__(self, message, response):
+        self.message    = message
+        self.response   = response
+        super().__init__(self.message)
 
 # WPGBook class to store needed attributes to create WPG Book Post
 class WPGBook:
@@ -57,86 +33,162 @@ class WPGBook:
     def __str__(self):
         return f"Book(title={self.title}, author={self.author}, description={self.description})"
     
-# WPG Book Post Module Functions    
-def createBook(book: WPGBook):
+class WPGBookPostClient:
+
+    def __init__(self, site_url, username, password):
+        # WordPress site details
+        self.wp_site_url = site_url
+        self.wp_username = username  # Service Account Username
+        self.wp_password = password  # Service Account Password
+
+        self.post_status = "publish"  # Options: 'publish', 'draft', etc.
+
+        # Combine username and password in the format "username:password"
+        self.credentials = f"{username}:{password}"
+
+        # Base64 encode the credentials
+        self.base64_credentials = base64.b64encode(self.credentials.encode('utf-8')).decode('utf-8')
+
+        # Endpoint for creating standard WP post
+        # self.wp_post_api_url = f"{wp_site_url}/wp-json/wp/v2/posts"
+
+        # Endpoint for creating WPG Books post
+        self.wp_books_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/books"
+
+        # Endpoint for uploading media
+        self.wp_media_api_url = f"{self.wp_site_url}/wp-json/wp/v2/media"
+
+        # Libarary content download base URL
+        self.download_url = f"{self.wp_site_url}/wp-content/library/"
+
+        # Prepare the Authorization header with Base64 encoded credentials
+        self.headers = {
+            "Authorization": "Basic " + self.base64_credentials
+        }
+
+    # WPG Book Post Module Functions, returns post ID if successful, throws error if not  
+    def createBook(self, book: WPGBook, uploadPDF):
+        console = Console()
+        with console.status(f"[bold green][Loading       ] {book.title}") as status:
+            self._createBook(book, uploadPDF, status)
    
-    # Post details
-    post_status = "publish"  # Options: 'publish', 'draft', etc.
+    def _createBook(self, book: WPGBook, uploadPDF, status):
+        # Post details
+        post_status = "publish"  # Options: 'publish', 'draft', etc.
 
-    # Prepare the post data
-    post_data = {
-        "title": book.title,
-        "content": book.description,
-        "status": post_status,
-        "categories": [8],              #Array of category ids, will likely need to translate from csv file
-        "wbg_author": book.author,
-        "wbg_status": "active",
-        "wbg_download_link": f"{download_url}{book.folder}/{book.file}",
-        "book_category": [4],           #TODO: Figure out custom taxonomy
-    }
+        # Prepare the post data
+        post_data = {
+            "title": book.title,
+            "content": book.description,
+            "status": post_status,
+            "categories": [8],              #Array of category ids, will likely need to translate from csv file
+            "wbg_author": book.author,
+            "wbg_status": "active",
+            "wbg_download_link": f"{self.download_url}{book.folder}/{book.file}",
+            "book_category": [4],           #TODO: Figure out custom taxonomy
+        }
 
-    # Upload book cover (if exists) and set its cover id
-    if (book.cover_file):
-        cover_id = uploadBookCover(book)
-        post_data["featured_media"] = cover_id
+        # Upload book cover (if exists) and set its cover id
+        if (book.cover_file):
+            status.update(f"[bold green][Loading Cover  ] {book.title}")
+            cover_id = self.uploadBookCover(book)
+            post_data["featured_media"] = cover_id
 
-    # Send the POST request to create a new book
-    response = requests.post(
-        wp_books_post_api_url,
-        json=post_data,
-        headers=headers  # Use the headers with the Authorization
-    )
+        # Upload book pdf file
+        if (uploadPDF):
+            status.update(f"[bold green][Loading PDF    ] {book.title}")
+            file_url = self.uploadBook(book)
+            post_data["wbg_download_link"] = file_url
 
-    # Check the response status
-    if response.status_code == 201:
-        print("Book created successfully!")
-        print("Post ID:", response.json()['id'])
-    else:
-        print("Failed to create book.")
-        print("Response:", response.text)
+        # Send the POST request to create a new book
+        status.update(f"[bold green][Loading Details] {book.title}")
+        response = requests.post(
+            self.wp_books_post_api_url,
+            json=post_data,
+            headers=self.headers  # Use the headers with the Authorization
+        )
 
-def uploadBookCover(book: WPGBook):
-    image_path = f"{book.base_path}\{book.folder}\{book.cover_file}"
-    print("Image Path: ", image_path)
+        # Check the response status
+        if response.status_code == 201:
+            return response.json()['id']
+        else:
+            raise WPGBookAPIException("Failed to create book", response )
 
-    # Read the image file
-    with open(image_path, 'rb') as img_file:
-        image_data = img_file.read()
+    def uploadBookCover(self, book: WPGBook):
+        image_path = f"{book.base_path}\\{book.folder}\\{book.cover_file}"
 
-    # Extract image filename
-    image_filename = os.path.basename(image_path)
+        # Read the image file
+        with open(image_path, 'rb') as img_file:
+            image_data = img_file.read()
+
+        # Extract image filename
+        image_filename = os.path.basename(image_path)
     
-    # Clean up the filename for WordPress title
-    image_title = os.path.splitext(image_filename)[0]
+        # Clean up the filename for WordPress title
+        image_title = os.path.splitext(image_filename)[0]
 
-    # Set headers for the media upload
-    headers = {
-        'Content-Disposition': f'attachment; filename="{image_filename}"',
-        'Content-Type': 'image/jpeg', 
-        "Authorization": "Basic " + base64_credentials
-    }
+        # Set headers for the media upload
+        headers = {
+            'Content-Disposition': f'attachment; filename="{image_filename}"',
+            'Content-Type': 'image/jpeg', 
+            "Authorization": "Basic " + self.base64_credentials
+        }
 
-    # Include the image title in the metadata
-    metadata = {
-        'title': image_title,
-    }
+        # Include the image title in the metadata
+        metadata = {
+            'title': image_title,
+        }
 
-    # Upload the image
-    response = requests.post(
-        wp_media_api_url,
-        headers=headers,
-        data=image_data,
-        params=metadata,  
-    )
+        # Upload the image
+        response = requests.post(
+            self.wp_media_api_url,
+            headers=headers,
+            data=image_data,
+            params=metadata,  
+        )
 
-    if response.status_code == 201:
-        media_response = response.json()
-        cover_id = media_response['id']
-        print(f"Image uploaded successfully. Media ID: {cover_id}")
-        return cover_id
-    else:
-        return ""
+        if response.status_code == 201:
+            media_response = response.json()
+            cover_id = media_response['id']
+            return cover_id
+        else:
+            return ""
 
+    def uploadBook(self, book: WPGBook):
+        pdf_path = f"{book.base_path}\\{book.folder}\\{book.file}"
 
+        # Read the image file
+        with open(pdf_path, 'rb') as pdf_file:
+            pdf_data = pdf_file.read()
 
+        # Extract image filename
+        pdf_filename = os.path.basename(pdf_path)
+    
+        # Clean up the filename for WordPress title
+        pdf_title = os.path.splitext(pdf_filename)[0]
 
+        # Set headers for the media upload
+        headers = {
+            "Authorization": "Basic " + self.base64_credentials
+        }
+
+        mime_type = 'application/pdf'
+
+         # Prepare the payload for multipart form data
+        files = {
+            'file': (pdf_filename, pdf_data, mime_type)
+        }
+
+        # Upload the image
+        response = requests.post(
+            self.wp_media_api_url,
+            headers=headers,
+            files=files  
+        )
+
+        if response.status_code == 201:
+            media_response = response.json()
+            file_url = media_response.get('source_url')
+            return file_url
+        else:
+            return ""
