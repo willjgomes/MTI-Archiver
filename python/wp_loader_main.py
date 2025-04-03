@@ -1,6 +1,6 @@
 import csv
 import author_doc_scan, book_csv_reader, google_csv_loader
-from wpg_book_post import WPGBook, WPGBookPostClient
+from wbg_book_post import WPGBook, WPGBookPostClient
 from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
