@@ -70,7 +70,7 @@ class WPGBookPostClient:
     def createBook(self, book: WPGBook, uploadPDF):
         console = Console()
         with console.status(f"[bold green][Loading       ] {book.title}") as status:
-            self._createBook(book, uploadPDF, status)
+            return self._createBook(book, uploadPDF, status)
    
     def _createBook(self, book: WPGBook, uploadPDF, status):
         # Post details

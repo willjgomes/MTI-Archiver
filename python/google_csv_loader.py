@@ -7,7 +7,7 @@ from pathlib import Path
 def load_csv_files(mticonfig: MTIConfig):   
     last_idx_gen_dt		= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
     last_idx_load_dt	= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
-    last_idx_run_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)
+    last_idx_run_dt     = mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)
     
     if (last_idx_gen_dt and last_idx_gen_dt == last_idx_run_dt):
         last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index.csv')
@@ -17,7 +17,7 @@ def load_csv_files(mticonfig: MTIConfig):
         print("Updating Google Sheet, please wait ...")
 
         # Get existing google sheet for collection
-        spreadsheet = get_collection_sheet(mticonfig)
+        spreadsheet = get_indexer_output_sheet(mticonfig)
 
         # If index was never loaded, load only the current index as new
         if (not last_idx_load_dt):
@@ -41,9 +41,14 @@ def load_csv_files(mticonfig: MTIConfig):
         print(f"Google Sheet successfully updated.")
 
 
+def get_indexer_output_sheet(mticonfig: MTIConfig):
+    return get_sheet(mticonfig, mticonfig.coll_name + ' Indexer Output')
+
 def get_collection_sheet(mticonfig: MTIConfig):
+    return get_sheet(mticonfig, mticonfig.coll_name + ' Collection')
+
+def get_sheet(mticonfig: MTIConfig, spreadsheet_name):
     client              = create_google_client(mticonfig.ini['Google']['ServiceAccountKeyFile'])
-    spreadsheet_name    = mticonfig.coll_name + ' Collection'
 
     print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
     
@@ -62,7 +67,6 @@ def get_collection_sheet(mticonfig: MTIConfig):
     print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
 
     return spreadsheet
-
 
 def create_google_client(keyfile):
     # Authenticate using the Service Account JSON key file
@@ -111,6 +115,44 @@ def update_summary_tab(sheet, doct_type, index_date):
         summary_sheet = sheet.add_worksheet(title="Summary", rows="100", cols="10")
         summary_sheet.update("A1", [["Index Type", "Index Date"]])
         summary_sheet.update("A2",[[doct_type, index_date]])
+
+def update_collection_sheet(mticonfig:MTIConfig):
+    #Get the load file dates
+    last_google_load_dt = mticonfig.exe_details.get(MTIDataKey.LAST_GOOG_LOAD_FILE_DT)
+    last_idx_load_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
+
+    if (not last_google_load_dt==last_idx_load_dt):
+        # Get existing collection sheet and fetch headers
+        sheet = get_collection_sheet(mticonfig).worksheet(mticonfig.doct_name)
+        existing_headers = sheet.row_values(1)      
+
+        # Load CSV file into a DataFrame
+        last_idx_load_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Loaded.csv')
+        df = pd.read_csv(last_idx_load_file, delimiter="|", dtype=str)
+
+        # Replace NaN values with an empty string
+        df.fillna("", inplace=True) 
+
+        # Add cmpty fields to data frame for columns that only exist in google sheet
+        for col in existing_headers:
+            if col not in df.columns:
+                df[col] = ""  # Add missing columns as empty
+
+
+        # Reorder DataFrame columns to match the sheet
+        df = df[existing_headers]  # This ensures correct column alignment
+
+        # Convert DataFrame to list of lists
+        data_to_append = df.values.tolist()
+
+        # Append data to Google Sheet
+        sheet.append_rows(data_to_append)
+
+        print("Data appended successfully!")
+
+        mticonfig.exe_details[MTIDataKey.LAST_GOOG_LOAD_FILE_DT]  = last_idx_load_dt
+        mticonfig.save_archiver_data()
+
 
 
     

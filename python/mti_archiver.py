@@ -59,7 +59,12 @@ def launch_indexer():
 # WordPress loader program/function to load the new index output to WP Books Gallery Plugin
 def launch_wp_loader():
 	try:
+		# Load wordpress
 		wp_loader_main.load(mticonfig)
+
+		# Update google sheet with loaded books
+		google_csv_loader.update_collection_sheet(mticonfig)
+
 		input("Press enter to continue.")
 	except Exception as e:
 		print("\nUnexpected Error occured running Word Press Loader!\n")

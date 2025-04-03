@@ -1,5 +1,5 @@
 import csv
-import author_doc_scan, book_csv_reader
+import author_doc_scan, book_csv_reader, google_csv_loader
 from wpg_book_post import WPGBook, WPGBookPostClient
 from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
@@ -51,12 +51,14 @@ def load(mticonfig:MTIConfig):
 
             # Save execution details and write file only if not dry run.
             if (not isDryRun):
+                # Output loaded books to CSV file
                 with open(loaded_file, "w", newline="", encoding="utf-8") as csvfile:                
-                    fieldnames = ['Post ID', 'WPG Load Date'] + author_doc_scan.get_fieldnames('Book')
-                    writer = csv.DictWriter(csvfile, fieldnames)
+                    fieldnames = ['Post ID', 'WBG Load Date'] + author_doc_scan.get_fieldnames('Book')
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter="|")
                     writer.writeheader()
                     writer.writerows(loadedbooks)
-
+        
+                # Save execution details checkpoint since wordpress loaded and loaded file created
                 mticonfig.exe_details[MTIDataKey.LAST_IDX_LOAD_FILE_DT]  = last_idx_gen_dt
                 mticonfig.exe_details[MTIDataKey.LAST_WP_LOADER_RUN_DT]  = loadtimestamp
                 mticonfig.save_archiver_data()
@@ -92,7 +94,7 @@ def load_book(isDryRun, wpgclient, record, uploadPDF, loadtimestamp):
     else:
         print(new_book)
 
-    record['WPG Load Date'] = loadtimestamp
+    record['WBG Load Date'] = loadtimestamp
     record['Post ID'] = postid
 
     return record
