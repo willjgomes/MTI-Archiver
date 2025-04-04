@@ -39,7 +39,7 @@ def load(mticonfig:MTIConfig):
     (last_idx_gen_dt, gen_datetime, load_datetime) = get_dates(mticonfig)
         
     if (not gen_datetime):
-        print("Index for {mticonfig.coll_name} { mticonfig.doct_name} not found. Please run indexer first.")
+        print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} not found. Please run indexer first.")
     elif (load_datetime and (load_datetime == gen_datetime)):
         print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} dated {last_idx_gen_dt} has previously been loaded.")
     else:

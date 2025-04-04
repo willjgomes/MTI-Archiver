@@ -27,12 +27,12 @@ def load_csv_files(mticonfig: MTIConfig):
         # If index was loaded, load the respective index and new files 
         # TODO: Remove the Index File, only do the new (will replace the Index File with the full inventory)
         else:
-            tab_name    = mticonfig.doct_name + "-Index"
-            load_csv_file(spreadsheet, tab_name, last_idx_output_file)
+            #tab_name    = mticonfig.doct_name + "-Index"
+            #load_csv_file(spreadsheet, tab_name, last_idx_output_file)
             tab_name    = mticonfig.doct_name + "-New"
             load_csv_file(spreadsheet, tab_name, last_idx_new_file)
 
-        tab_name    = mticonfig.doct_name + "-Error"
+        tab_name    = mticonfig.doct_name + "-Idx-Errors"
         load_csv_file(spreadsheet, tab_name, last_idx_error_file)
 
         update_summary_tab(spreadsheet, mticonfig.doct_name, last_idx_gen_dt)
@@ -78,9 +78,9 @@ def create_google_client(keyfile):
     return gspread.authorize(creds)
     
 
-def load_csv_file(sheet, tab, file):
+def load_csv_file(sheet, tab, file, delimiter=","):
     # Load CSV File into Pandas DataFrame
-    df = pd.read_csv(file, dtype=str )
+    df = pd.read_csv(file, dtype=str, delimiter=delimiter)
 
     # Replace NaN values with an empty string
     df.fillna("", inplace=True) 
@@ -121,15 +121,15 @@ def update_collection_sheet(mticonfig:MTIConfig):
     last_google_load_dt = mticonfig.exe_details.get(MTIDataKey.LAST_GOOG_LOAD_FILE_DT)
     last_idx_load_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
 
-    if (not last_google_load_dt==last_idx_load_dt,mticonfig.coll_name):
+    if (last_idx_load_dt and not last_google_load_dt==last_idx_load_dt):
         print("Updating Google Sheets ...")
         # Get existing collection sheet and fetch headers
         sheet = get_collection_sheet(mticonfig).worksheet(mticonfig.doct_name)
         existing_headers = sheet.row_values(1)      
 
         # Load CSV file into a DataFrame
-        last_idx_load_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Loaded.csv')
-        df = pd.read_csv(last_idx_load_file, delimiter="|", dtype=str)
+        load_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Loaded.csv')
+        df = pd.read_csv(load_file, delimiter="|", dtype=str)
 
         # Replace NaN values with an empty string
         df.fillna("", inplace=True) 
@@ -139,7 +139,6 @@ def update_collection_sheet(mticonfig:MTIConfig):
             if col not in df.columns:
                 df[col] = ""  # Add missing columns as empty
 
-
         # Reorder DataFrame columns to match the sheet
         df = df[existing_headers]  # This ensures correct column alignment
 
@@ -148,6 +147,12 @@ def update_collection_sheet(mticonfig:MTIConfig):
 
         # Append data to Google Sheet
         sheet.append_rows(data_to_append)
+
+        # Upload Errors
+        spreadsheet = get_indexer_output_sheet(mticonfig)
+        tab_name    = mticonfig.doct_name + "-Load-Errors"
+        load_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Load_Error.csv')
+        load_csv_file(spreadsheet, tab_name, load_error_file, delimiter="|")
 
         print("Updates complete.")
 
