@@ -121,7 +121,8 @@ def update_collection_sheet(mticonfig:MTIConfig):
     last_google_load_dt = mticonfig.exe_details.get(MTIDataKey.LAST_GOOG_LOAD_FILE_DT)
     last_idx_load_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
 
-    if (not last_google_load_dt==last_idx_load_dt):
+    if (not last_google_load_dt==last_idx_load_dt,mticonfig.coll_name):
+        print("Updating Google Sheets ...")
         # Get existing collection sheet and fetch headers
         sheet = get_collection_sheet(mticonfig).worksheet(mticonfig.doct_name)
         existing_headers = sheet.row_values(1)      
@@ -148,7 +149,7 @@ def update_collection_sheet(mticonfig:MTIConfig):
         # Append data to Google Sheet
         sheet.append_rows(data_to_append)
 
-        print("Data appended successfully!")
+        print("Updates complete.")
 
         mticonfig.exe_details[MTIDataKey.LAST_GOOG_LOAD_FILE_DT]  = last_idx_load_dt
         mticonfig.save_archiver_data()

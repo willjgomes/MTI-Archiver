@@ -1,7 +1,5 @@
 
-import requests
-import base64
-import os
+import requests, base64, os, json
 from rich.console import Console
 
 class WPGBookAPIException(Exception):
@@ -49,16 +47,16 @@ class WPGBookPostClient:
         # Base64 encode the credentials
         self.base64_credentials = base64.b64encode(self.credentials.encode('utf-8')).decode('utf-8')
 
-        # Endpoint for creating standard WP post
-        # self.wp_post_api_url = f"{wp_site_url}/wp-json/wp/v2/posts"
+        # Endpoint for standard WP post
+        self.wp_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/posts"
 
-        # Endpoint for creating WPG Books post
+        # Endpoint for WPG Books post
         self.wp_books_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/books"
 
         # Endpoint for uploading media
-        self.wp_media_api_url = f"{self.wp_site_url}/wp-json/wp/v2/media"
+        self.wp_media_api_url = f"{self.wp_site_url}/wp-json/wp/v2/media"        
 
-        # Libarary content download base URL
+        # Library content download base URL
         self.download_url = f"{self.wp_site_url}/wp-content/library/"
 
         # Prepare the Authorization header with Base64 encoded credentials
@@ -165,12 +163,7 @@ class WPGBookPostClient:
         pdf_filename = os.path.basename(pdf_path)
     
         # Clean up the filename for WordPress title
-        pdf_title = os.path.splitext(pdf_filename)[0]
-
-        # Set headers for the media upload
-        headers = {
-            "Authorization": "Basic " + self.base64_credentials
-        }
+        pdf_title = os.path.splitext(pdf_filename)[0]        
 
         mime_type = 'application/pdf'
 
@@ -182,7 +175,7 @@ class WPGBookPostClient:
         # Upload the image
         response = requests.post(
             self.wp_media_api_url,
-            headers=headers,
+            headers=self.headers,
             files=files  
         )
 
@@ -192,3 +185,36 @@ class WPGBookPostClient:
             return file_url
         else:
             return ""
+
+    def check_book_exists(self, title):
+        params = {
+            "search": title  # Search for posts with this title
+        }
+
+        response = requests.get(
+            self.wp_books_post_api_url, 
+            params=params, 
+            headers=self.headers
+        )
+
+        if response.status_code == 200:
+            posts = extract_json(response)
+            if posts:
+                return True, [post['id'] for post in posts]  # Return True and matching post IDs
+            else:
+                return False, []
+        else:
+            return False, []
+
+# Only use this if response.json() does not work even if API returns Content-Type: application/json
+# This method attempts to extract the JSON from response when it is incorrectly including both HTML
+# and JSON (like the Books POst API endpoint seems to be doing)
+def extract_json(response):
+    text = response.text
+
+    start = text.index('[')
+    end = text.rindex(']') + 1
+    cleaned = text[start:end]
+
+    return json.loads(cleaned)
+
