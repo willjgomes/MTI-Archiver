@@ -8,6 +8,7 @@ from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
 from mti_config import MTIConfig, MTIDataKey
+from wbg_book_post import WPGBookAPIException
 import google_csv_loader, wp_loader_main
 import traceback
 
@@ -66,6 +67,9 @@ def launch_wp_loader():
 		google_csv_loader.update_collection_sheet(mticonfig)
 
 		input("Press enter to continue.")
+	except WPGBookAPIException as e:
+		print(e.response)
+		print_error_details()
 	except Exception as e:
 		print("\nUnexpected Error occured running Word Press Loader!\n")
 		print_error_details()

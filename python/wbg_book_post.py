@@ -10,16 +10,9 @@ class WPGBookAPIException(Exception):
 
 # WPGBook class to store needed attributes to create WPG Book Post
 class WPGBook:
-    title = ""
-    description = ""
-    author = ""
-    folder = ""
-    file = ""
-    cover_file = ""
-    base_path = ""
 
     # WPGBook Class Functions
-    def __init__(self, title, description, author, folder, file, cover_file, base_path):
+    def __init__(self, title="", description="", author="", folder="", file="", cover_file="", base_path=""):
         self.title = title
         self.description = description
         self.author = author
@@ -27,6 +20,7 @@ class WPGBook:
         self.file = file
         self.cover_file = cover_file
         self.base_path = base_path
+        self.book_categories = []
 
     def __str__(self):
         return f"Book(title={self.title}, author={self.author}, description={self.description})"
@@ -34,8 +28,35 @@ class WPGBook:
 class WPGBookPostClient:
 
     def __init__(self, site_url, username, password):
-        # WordPress site details
+        # Setup WordPress URLs
+        self.__init_urls(site_url)
+
+        # Setup WordPress Authorization
+        self.__init_authorization(username, password)
+
+        # Additional Properties
+        self.dflt_post_cat_id =  self.get_category_id_by_slug("book")
+    
+    def __init_urls(self, site_url):
+        # URL for Wordpress Site
         self.wp_site_url = site_url
+
+        # Endpoint for standard WP post
+        self.wp_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/posts"
+
+        # Endpoint for WPG Books post
+        self.wp_books_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/books"
+
+        # Endpoint for uploading media
+        self.wp_media_api_url = f"{self.wp_site_url}/wp-json/wp/v2/media"        
+
+        # Endpoint for categories
+        self.wp_categories_api_url = f"{self.wp_site_url}/wp-json/wp/v2/categories"        
+
+        # Library content download base URL
+        self.download_url = f"{self.wp_site_url}/wp-content/library/"
+
+    def __init_authorization(self, username, password):
         self.wp_username = username  # Service Account Username
         self.wp_password = password  # Service Account Password
 
@@ -47,22 +68,11 @@ class WPGBookPostClient:
         # Base64 encode the credentials
         self.base64_credentials = base64.b64encode(self.credentials.encode('utf-8')).decode('utf-8')
 
-        # Endpoint for standard WP post
-        self.wp_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/posts"
-
-        # Endpoint for WPG Books post
-        self.wp_books_post_api_url = f"{self.wp_site_url}/wp-json/wp/v2/books"
-
-        # Endpoint for uploading media
-        self.wp_media_api_url = f"{self.wp_site_url}/wp-json/wp/v2/media"        
-
-        # Library content download base URL
-        self.download_url = f"{self.wp_site_url}/wp-content/library/"
-
         # Prepare the Authorization header with Base64 encoded credentials
         self.headers = {
             "Authorization": "Basic " + self.base64_credentials
         }
+
 
     # WPG Book Post Module Functions, returns post ID if successful, throws error if not  
     def createBook(self, book: WPGBook, uploadPDF):
@@ -70,7 +80,7 @@ class WPGBookPostClient:
         with console.status(f"[bold green][Loading       ] {book.title}") as status:
             return self._createBook(book, uploadPDF, status)
    
-    def _createBook(self, book: WPGBook, uploadPDF, status):
+    def _createBook(self, book: WPGBook, uploadPDF, status_msg):
         # Post details
         post_status = "publish"  # Options: 'publish', 'draft', etc.
 
@@ -79,27 +89,27 @@ class WPGBookPostClient:
             "title": book.title,
             "content": book.description,
             "status": post_status,
-            "categories": [8],              #Array of category ids, will likely need to translate from csv file
+            "categories": self.dflt_post_cat_id,              #Array of category ids, will likely need to translate from csv file
             "wbg_author": book.author,
             "wbg_status": "active",
             "wbg_download_link": f"{self.download_url}{book.folder}/{book.file}",
-            "book_category": [4],           #TODO: Figure out custom taxonomy
+            "wbg_book_categories": book.book_categories
         }
 
         # Upload book cover (if exists) and set its cover id
         if (book.cover_file):
-            status.update(f"[bold green][Loading Cover  ] {book.title}")
+            status_msg.update(f"[bold green][Loading Cover  ] {book.title}")
             cover_id = self.uploadBookCover(book)
             post_data["featured_media"] = cover_id
 
         # Upload book pdf file
         if (uploadPDF):
-            status.update(f"[bold green][Loading PDF    ] {book.title}")
+            status_msg.update(f"[bold green][Loading PDF    ] {book.title}")
             file_url = self.uploadBook(book)
             post_data["wbg_download_link"] = file_url
 
         # Send the POST request to create a new book
-        status.update(f"[bold green][Loading Details] {book.title}")
+        status_msg.update(f"[bold green][Loading Details] {book.title}")
         response = requests.post(
             self.wp_books_post_api_url,
             json=post_data,
@@ -108,7 +118,7 @@ class WPGBookPostClient:
 
         # Check the response status
         if response.status_code == 201:
-            return response.json()['id']
+            return response.json()
         else:
             raise WPGBookAPIException("Failed to create book", response )
 
@@ -205,6 +215,14 @@ class WPGBookPostClient:
                 return False, []
         else:
             return False, []
+    
+    
+    def get_category_id_by_slug(self, category_slug):
+        resp = requests.get(f"{self.wp_categories_api_url}?slug={category_slug}")
+        if resp.status_code == 200 and resp.json():
+            return resp.json()[0]['id']
+        else:
+            raise ValueError(f"Category slug '{category_slug}' not found")
 
 # Only use this if response.json() does not work even if API returns Content-Type: application/json
 # This method attempts to extract the JSON from response when it is incorrectly including both HTML

@@ -1,5 +1,4 @@
 import csv
-from http.cookiejar import LoadError
 import author_doc_scan, book_csv_reader, google_csv_loader
 from wbg_book_post import WPGBook, WPGBookPostClient
 from mti_config import MTIConfig, MTIDataKey
@@ -72,7 +71,7 @@ def load(mticonfig:MTIConfig):
                 (book_exists, post_ids) = wbgclient.check_book_exists(record['Book Title'])
                 if (not book_exists):
                     book_load_count += 1
-                    loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
+                    loadedbooks.append(load_book(mticonfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
                 else:
                     book_error_count += 1
                     loaderrors.append(log_book_exists(record, post_ids))
@@ -112,17 +111,20 @@ def load(mticonfig:MTIConfig):
             print('\n ===== Dry Run Output ==== \n')
        
 
-def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
+def load_book(mticonfig:MTIConfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
+
     new_book = WPGBook(
-        record['Book Title'],
-        "", 
-        record['First Name'] + " " + record['Last Name'],
-        record['Author Folder'],
-        record['Book File'],
-        record['Book Cover File'],
-        record['Base Path']
+        title=record['Book Title'],
+        author=get_author(record),
+        folder=record['Author Folder'],
+        file=record['Book File'],
+        cover_file=record['Book Cover File'],
+        base_path=record['Base Path']
     )
     
+    book_categories = mticonfig.ini[mticonfig.archive_sectkey]['BookCategories']
+    new_book.book_categories = [s.strip() for s in book_categories.split(",")]   
+
     if (not isDryRun):
         postid = wbgclient.createBook(new_book, uploadPDF)
         print("[Loaded]", record['Book Title'])
@@ -133,6 +135,18 @@ def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
     record['Post ID'] = postid
 
     return record
+
+def get_author(record):
+    first_name  = record['First Name']
+    middle_name = record['Middle Name']
+    last_name   = record['Last Name']
+    if (len(middle_name) > 0):
+        author = first_name + " " + middle_name + " " + last_name
+    else:
+        author = first_name + " " + last_name
+    
+    return author
+
 
 def log_book_exists(record, post_ids):
     record['Error']     = 'Book Already Exists'
