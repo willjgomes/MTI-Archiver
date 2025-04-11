@@ -65,28 +65,29 @@ def load(mticonfig:MTIConfig):
         loadedbooks         = []
         loaderrors          = []
         loadtimestamp       = mticonfig.get_timestamp()
+        doct_prefix         = MTIConfig.tosingular(mticonfig.doct_name)
         
         try:
-            for record in book_csv_reader.read_csv_file(idx_new_file):                
-                (book_exists, post_ids) = wbgclient.check_book_exists(record['Book Title'])
+            for record in book_csv_reader.read_csv_file(doct_prefix, idx_new_file):                
+                (book_exists, post_ids) = wbgclient.check_book_exists(record[f"{doct_prefix} Title"])
                 if (not book_exists):
                     book_load_count += 1
                     loadedbooks.append(load_book(mticonfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
                 else:
                     book_error_count += 1
-                    loaderrors.append(log_book_exists(record, post_ids))
+                    loaderrors.append(log_book_exists(doct_prefix, record, post_ids))
 
             # Save execution details and write file only if not dry run.
             if (not isDryRun):
                 # Output loaded books to CSV file
                 with open(loaded_file, "w", newline="", encoding="utf-8") as csvfile:                
-                    fieldnames = ['Post ID', 'WBG Load Date'] + author_doc_scan.get_fieldnames('Book')
+                    fieldnames = ['Post ID', 'WBG Load Date'] + author_doc_scan.get_fieldnames(doct_prefix)
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter="|")
                     writer.writeheader()
                     writer.writerows(loadedbooks)
         
                 with open(load_error_file, "w", newline="", encoding="utf-8") as csvfile:                
-                    fieldnames = ['Error', 'Post IDs'] + author_doc_scan.get_fieldnames('Book')
+                    fieldnames = ['Error', 'Post IDs'] + author_doc_scan.get_fieldnames(doct_prefix)
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames, delimiter="|")
                     writer.writeheader()
                     writer.writerows(loaderrors)
@@ -111,23 +112,33 @@ def load(mticonfig:MTIConfig):
             print('\n ===== Dry Run Output ==== \n')
        
 
+
 def load_book(mticonfig:MTIConfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
+    # Get Document Type Prefix (eg. Article, Book, etc)
+    doct_prefix = MTIConfig.tosingular(mticonfig.doct_name)
 
     new_book = WPGBook(
-        title=record['Book Title'],
-        author=get_author(record),
-        folder=record['Author Folder'],
-        file=record['Book File'],
-        cover_file=record['Book Cover File'],
-        base_path=record['Base Path']
+        title       = record[f"{doct_prefix} Title"],
+        author      = get_author(record),
+        folder      = record['Author Folder'],
+        file        = record[f"{doct_prefix} File"],
+        cover_file  = record[f"{doct_prefix} Cover File"],
+        base_path   = record['Base Path']
     )
     
+    # Set book categories
     book_categories = mticonfig.ini[mticonfig.archive_sectkey]['BookCategories']
     new_book.book_categories = [s.strip() for s in book_categories.split(",")]   
 
+    # Add article specific fields
+    if (doct_prefix == "Article"):
+        new_book.published_on   = record['Date']
+        new_book.publisher      = record['Periodical']
+        new_book.subtitle       = record['Date'] + " " + record['Periodical']
+
     if (not isDryRun):
         postid = wbgclient.createBook(new_book, uploadPDF)
-        print("[Loaded]", record['Book Title'])
+        print("[Loaded]", record[f"{doct_prefix} Cover File"])
     else:
         print(new_book)
 
@@ -148,10 +159,10 @@ def get_author(record):
     return author
 
 
-def log_book_exists(record, post_ids):
-    record['Error']     = 'Book Already Exists'
+def log_book_exists(doct_prefix, record, post_ids):
+    record['Error']     = f"{doct_prefix} Already Exists"
     record['Post IDs']  = ','.join(str(pid) for pid in post_ids)
 
-    print("[Exists]", record['Book Title'])
+    print("[Exists]", record[f"{doct_prefix} Title"])
 
     return record

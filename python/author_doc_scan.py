@@ -1,4 +1,5 @@
 import os, csv, re
+from mti_config import MTIConfig
 from tqdm import tqdm
 
 class DocError(Exception):
@@ -19,10 +20,7 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
     document_skipped_count = 0
     error_count = 0
 
-    #Remove 's' from doc name if it has it
-    if doct_name[-1].lower() == 's':
-        doct_name = doct_name[:-1]
-       
+    doct_name = MTIConfig.tosingular(doct_name)
     
     author_folders = list(os.scandir(folders_path))
     for author_folder in tqdm(author_folders, desc="  Processing"):
@@ -118,6 +116,8 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
         title = match.group(1).replace('-', ' ')                            
         cover_file_name = match.group(1) + "_cover"
         cover_file = next((f.name for f in os.scandir(author_folder.path) if f.is_file() and f.name.startswith(cover_file_name)), "")
+        if (len(cover_file) == 0):
+            raise DocError(f"{doct_name} cover file not found, check if missing or improperly named.")
                             
         # Initialize doc details dictionary record
         doc_record = {

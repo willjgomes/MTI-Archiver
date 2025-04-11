@@ -190,4 +190,14 @@ class MTIConfig:
 			return datetime.strptime(timestamp_str, "%Y-%m-%d_%H-%M-%S")
 		else:
 			return None
+
+	# Method to get singular form of a word
+	@staticmethod
+	def tosingular(str):
+		#Remove 's' from doc name if it has it
+		if (len(str) > 0 and str[-1].lower() == 's'):
+			return str[:-1]
+		else:
+			return str
+		
 		

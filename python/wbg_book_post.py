@@ -21,6 +21,9 @@ class WPGBook:
         self.cover_file = cover_file
         self.base_path = base_path
         self.book_categories = []
+        self.publisher = ""
+        self.published_on = ""
+        self.subtitle = ""
 
     def __str__(self):
         return f"Book(title={self.title}, author={self.author}, description={self.description})"
@@ -86,15 +89,22 @@ class WPGBookPostClient:
 
         # Prepare the post data
         post_data = {
-            "title": book.title,
-            "content": book.description,
-            "status": post_status,
-            "categories": self.dflt_post_cat_id,              #Array of category ids, will likely need to translate from csv file
-            "wbg_author": book.author,
-            "wbg_status": "active",
-            "wbg_download_link": f"{self.download_url}{book.folder}/{book.file}",
-            "wbg_book_categories": book.book_categories
+            "title":                book.title,
+            "content":              book.description,
+            "status":               post_status,
+            "categories":           self.dflt_post_cat_id,              #Array of category ids, will likely need to translate from csv file
+            "wbg_author":           book.author,
+            "wbg_status":           "active",
+            "wbg_download_link":    f"{self.download_url}{book.folder}/{book.file}",
+            "wbg_book_categories":  book.book_categories
         }
+
+        # Add article specific fields to post data
+        post_data.update({
+            "wbg_publisher":        book.publisher,
+            "wbg_published_on":     book.published_on,
+            "wbg_subtitle":         f"{book.published_on} {book.publisher}"
+        })
 
         # Upload book cover (if exists) and set its cover id
         if (book.cover_file):
@@ -118,7 +128,7 @@ class WPGBookPostClient:
 
         # Check the response status
         if response.status_code == 201:
-            return response.json()
+            return response.json()['id']
         else:
             raise WPGBookAPIException("Failed to create book", response )
 
