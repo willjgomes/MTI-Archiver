@@ -124,8 +124,11 @@ def update_collection_sheet(mticonfig:MTIConfig):
     if (last_idx_load_dt and not last_google_load_dt==last_idx_load_dt):
         print("Updating Google Sheets ...")
         # Get existing collection sheet and fetch headers
-        sheet = get_collection_sheet(mticonfig).worksheet(mticonfig.doct_name)
-        existing_headers = sheet.row_values(1)      
+        sheet = get_collection_sheet(mticonfig)
+        try:
+            sheet = sheet.worksheet(mticonfig.doct_name) 
+        except gspread.exceptions.WorksheetNotFound:
+            sheet = sheet.add_worksheet(title=mticonfig.doct_name, rows="1000", cols="20")
 
         # Load CSV file into a DataFrame
         load_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Loaded.csv')
@@ -134,13 +137,19 @@ def update_collection_sheet(mticonfig:MTIConfig):
         # Replace NaN values with an empty string
         df.fillna("", inplace=True) 
 
-        # Add cmpty fields to data frame for columns that only exist in google sheet
-        for col in existing_headers:
-            if col not in df.columns:
-                df[col] = ""  # Add missing columns as empty
+        headers = sheet.row_values(1)
+        if (headers):
+            # Add cmpty fields to data frame for columns that only exist in google sheet
+            for col in headers:
+                if col not in df.columns:
+                    df[col] = ""  # Add missing columns as empty
+        else:
+            # Add header row to sheet using the data frame columns
+            headers = df.columns.tolist()
+            sheet.insert_row(headers)
 
         # Reorder DataFrame columns to match the sheet
-        df = df[existing_headers]  # This ensures correct column alignment
+        df = df[headers]  # This ensures correct column alignment
 
         # Convert DataFrame to list of lists
         data_to_append = df.values.tolist()
