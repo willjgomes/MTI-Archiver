@@ -1,0 +1,14 @@
+# Console Menu
+console-menu>=0.8.0
+
+#Google Sheets API
+gspread>=2.38
+
+#Pandas Data Frames
+pandas>=2.2.3
+
+# Rich Text and Formatting Library for Console
+rich>=14.0.0
+
+# Progress Bar Indicator
+tqdm>=4.67.1
