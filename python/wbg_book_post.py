@@ -171,6 +171,7 @@ class WPGBookPostClient:
             return cover_id
         else:
             return ""
+            # raise WPGBookAPIException("Failed to upload book cover", response )
 
     def uploadBook(self, book: WPGBook):
         pdf_path = f"{book.base_path}\\{book.folder}\\{book.file}"
@@ -232,7 +233,8 @@ class WPGBookPostClient:
         if resp.status_code == 200 and resp.json():
             return resp.json()[0]['id']
         else:
-            raise ValueError(f"Category slug '{category_slug}' not found")
+            #raise ValueError(f"Category slug '{category_slug}' not found\n {resp}")
+            return " "
 
 # Only use this if response.json() does not work even if API returns Content-Type: application/json
 # This method attempts to extract the JSON from response when it is incorrectly including both HTML

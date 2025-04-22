@@ -1,6 +1,6 @@
 import csv
 import author_doc_scan, book_csv_reader, google_csv_loader
-from wbg_book_post import WPGBook, WPGBookPostClient
+from wbg_book_post import WPGBook, WPGBookPostClient, WPGBookAPIException
 from mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
@@ -99,10 +99,12 @@ def load(mticonfig:MTIConfig):
 
         except FileNotFoundError:
             print(f"Error: File not found at {idx_new_file}")
-#        except ValueError as ve:
-#            print(f"Error: {ve}")
-#        except Exception as e:
-#            print(f"An unexpected error occurred: {e}")
+        except ValueError as ve:
+            print(f"Error: {ve}")
+        except WPGBookAPIException as apie:
+            print(f"Error calling WordPress API:\n {apie.response} \n {apie.response.content}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
         else:
             print(mticonfig.idtab, f"Documents loaded     {book_load_count}")
             print(mticonfig.idtab, f"Documents not loaded {book_error_count}")
@@ -141,6 +143,7 @@ def load_book(mticonfig:MTIConfig, isDryRun, wbgclient, record, uploadPDF, loadt
         print("[Loaded]", record[f"{doct_prefix} Cover File"])
     else:
         print(new_book)
+        postid = 'Dry Run'
 
     record['WBG Load Date'] = loadtimestamp
     record['Post ID'] = postid
