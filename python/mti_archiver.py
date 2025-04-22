@@ -2,8 +2,6 @@
 
 import os
 from pathlib import Path
-from pickle import NONE
-from turtle import update
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti_indexer import MTIIndexer, IndexerException
@@ -89,13 +87,13 @@ def get_doc_type():
 		updateMenuText()
 
 def get_settings_menu():
-	menu = ConsoleMenu("Settings")
+	menu = ConsoleMenu("Select Archive Folder")
 
 	MenuItem.collection_settings.function	= get_collection
-	MenuItem.collection_settings.text		= f"Collection   : [{mticonfig.coll_name}]"
+	MenuItem.collection_settings.text		= f"Collection Folder : [{mticonfig.coll_name}]"
 	
 	MenuItem.doc_type_settings.function		= get_doc_type
-	MenuItem.doc_type_settings.text			= f"Document Type: [{mticonfig.doct_name}]"
+	MenuItem.doc_type_settings.text			= f"Document Folder: [{mticonfig.doct_name}]"
 
 	menu.append_item(MenuItem.collection_settings)
 	menu.append_item(MenuItem.doc_type_settings)
@@ -103,7 +101,7 @@ def get_settings_menu():
 	return menu
 
 def updateMenuText():
-	menu.epilogue_text = f"Current Collection [ {mticonfig.archive_sectkey} ]\n" 
+	menu.epilogue_text = f"Active Archive Folder [ {mticonfig.archive_sectkey} ]\n" 
 
 	if (len(mticonfig.exe_details) == 0):
 		menu.epilogue_text += "Last processed on [ Never ]\n"
@@ -113,7 +111,7 @@ def updateMenuText():
 def create_main_menu():
 	menu = ConsoleMenu("Archiving Main Menu", clear_screen=not mticonfig.debug_flag('menu'))
 	
-	menu.append_item(SubmenuItem("Settings", get_settings_menu(), menu=menu))
+	menu.append_item(SubmenuItem("Open Archive Folder", get_settings_menu(), menu=menu))
 	menu.append_item(FunctionItem(f'Run Indexer', launch_indexer))
 	menu.append_item(FunctionItem(f'Run WordPress Loader', launch_wp_loader))
 
@@ -123,7 +121,7 @@ def create_main_menu():
 
 try:
 	mticonfig = MTIConfig()
-	input("Press enter to continue")
+	#input("Press enter to continue")
 
 	# shutil.rmtree(temp_dir)								# Delete Existing Temp Directory??
 	os.makedirs(mticonfig.temp_dir, exist_ok=True)			# Temporary Working Directory
