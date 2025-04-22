@@ -42,10 +42,10 @@ def load_csv_files(mticonfig: MTIConfig):
 
 
 def get_indexer_output_sheet(mticonfig: MTIConfig):
-    return get_sheet(mticonfig, mticonfig.coll_name + ' Indexer Output')
+    return get_sheet(mticonfig, 'Archiver Report: ' + mticonfig.coll_name)
 
 def get_collection_sheet(mticonfig: MTIConfig):
-    return get_sheet(mticonfig, mticonfig.coll_name + ' Collection')
+    return get_sheet(mticonfig, 'Catalog: ' + mticonfig.coll_name)
 
 def get_sheet(mticonfig: MTIConfig, spreadsheet_name):
     client              = create_google_client(mticonfig.ini['Google']['ServiceAccountKeyFile'])
