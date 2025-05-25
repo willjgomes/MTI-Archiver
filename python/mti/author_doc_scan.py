@@ -1,5 +1,5 @@
 import os, csv, re
-from mti_config import MTIConfig
+from mti.mti_config import MTIConfig
 from tqdm import tqdm
 
 class DocError(Exception):

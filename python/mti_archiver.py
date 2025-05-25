@@ -4,10 +4,11 @@ import os
 from pathlib import Path
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
-from mti_indexer import MTIIndexer, IndexerException
-from mti_config import MTIConfig, MTIDataKey
-from wbg_book_post import WPGBookAPIException
-import google_csv_loader, wp_loader_main
+from mti.mti_indexer import MTIIndexer
+from mti.mti_config import MTIConfig, MTIDataKey
+from wordpressmti.wbg_book_post import WPGBookAPIException
+from wordpressmti import wp_loader_main
+from googlemti import google_csv_loader
 import traceback
 
 # Setup Global Variables, note config is loaded when created, no need to call load again

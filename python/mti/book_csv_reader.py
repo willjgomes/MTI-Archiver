@@ -1,5 +1,5 @@
 import csv
-import author_doc_scan
+from mti import author_doc_scan
 
 def read_csv_file(doct_name, file_path):
     """

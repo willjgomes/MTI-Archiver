@@ -1,7 +1,7 @@
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
-from mti_config import MTIConfig, MTIDataKey
+from mti.mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
 def load_csv_files(mticonfig: MTIConfig):   

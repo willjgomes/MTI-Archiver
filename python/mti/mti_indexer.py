@@ -1,6 +1,6 @@
 import subprocess, filecmp, difflib, os, shutil
-import author_doc_scan
-from mti_config import MTIConfig, MTIDataKey
+from mti import author_doc_scan
+from mti.mti_config import MTIConfig, MTIDataKey
 from pathlib import Path
 
 class IndexerException(Exception):

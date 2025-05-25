@@ -21,7 +21,7 @@ class MTIConfig:
 	idtab = "\t==>"
 
 	# Script Paths
-	script_dir		= Path(__file__).parent.parent
+	script_dir		= Path(__file__).parent.parent.parent
 	settings_file	= script_dir / 'settings' / 'archive.ini'
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
