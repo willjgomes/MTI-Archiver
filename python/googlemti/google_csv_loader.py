@@ -1,10 +1,10 @@
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
-from mti.mti_config import MTIConfig, MTIDataKey
+from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from pathlib import Path
 
-def load_csv_files(mticonfig: MTIConfig):   
+def load_csv_files():   
     last_idx_gen_dt		= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)
     last_idx_load_dt	= mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
     last_idx_run_dt     = mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)
@@ -17,7 +17,7 @@ def load_csv_files(mticonfig: MTIConfig):
         print("Updating Google Sheet, please wait ...")
 
         # Get existing google sheet for collection
-        spreadsheet = get_indexer_output_sheet(mticonfig)
+        spreadsheet = get_indexer_output_sheet()
 
         # If index was never loaded, load only the current index as new
         if (not last_idx_load_dt):
@@ -41,13 +41,13 @@ def load_csv_files(mticonfig: MTIConfig):
         print(f"Google Sheet successfully updated.")
 
 
-def get_indexer_output_sheet(mticonfig: MTIConfig):
-    return get_sheet(mticonfig, 'Archiver Report: ' + mticonfig.coll_name)
+def get_indexer_output_sheet():
+    return get_sheet('Archiver Report: ' + mticonfig.coll_name)
 
-def get_collection_sheet(mticonfig: MTIConfig):
-    return get_sheet(mticonfig, 'Catalog: ' + mticonfig.coll_name)
+def get_collection_sheet():
+    return get_sheet('Catalog: ' + mticonfig.coll_name)
 
-def get_sheet(mticonfig: MTIConfig, spreadsheet_name):
+def get_sheet(spreadsheet_name):
     client              = create_google_client(mticonfig.ini['Google']['ServiceAccountKeyFile'])
 
     print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
@@ -116,7 +116,7 @@ def update_summary_tab(sheet, doct_type, index_date):
         summary_sheet.update("A1", [["Index Type", "Index Date"]])
         summary_sheet.update("A2",[[doct_type, index_date]])
 
-def update_collection_sheet(mticonfig:MTIConfig):
+def update_collection_sheet():
     #Get the load file dates
     last_google_load_dt = mticonfig.exe_details.get(MTIDataKey.LAST_GOOG_LOAD_FILE_DT)
     last_idx_load_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
@@ -158,7 +158,7 @@ def update_collection_sheet(mticonfig:MTIConfig):
         sheet.append_rows(data_to_append)
 
         # Upload Errors
-        spreadsheet = get_indexer_output_sheet(mticonfig)
+        spreadsheet = get_indexer_output_sheet()
         tab_name    = mticonfig.doct_name + "-Load-Errors"
         load_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Load_Error.csv')
         load_csv_file(spreadsheet, tab_name, load_error_file, delimiter="|")

@@ -1,6 +1,6 @@
 import subprocess, filecmp, difflib, os, shutil
 from mti import author_doc_scan
-from mti.mti_config import MTIConfig, MTIDataKey
+from mti.mti_config import MTIDataKey, mticonfig
 from pathlib import Path
 
 class IndexerException(Exception):
@@ -37,7 +37,7 @@ class MTIIndexer:
 
     # This method starts the indexing process based on the current collection & document type selected
     @staticmethod
-    def start(mticonfig: MTIConfig):
+    def start():
         folder_to_index = ""
         try:                        
             folder_to_index = mticonfig.ini[mticonfig.archive_sectkey]['DocumentFolder'].strip()
@@ -57,8 +57,8 @@ class MTIIndexer:
         print("================")
         print("  Document Folder", folder_to_index)
     
-        #run_powershell_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
-        run_python_author_doc_scan(mticonfig, folder_to_index, index_output_file, index_debug_file, index_error_file)
+        #run_powershell_author_doc_scan(folder_to_index, index_output_file, index_debug_file, index_error_file)
+        run_python_author_doc_scan(folder_to_index, index_output_file, index_debug_file, index_error_file)
 
         # Update some archiver data
         mticonfig.exe_details[MTIDataKey.LAST_INDEXER_RUN_DT]   = timestamp     
@@ -112,7 +112,7 @@ class MTIIndexer:
         print()
         mticonfig.save_archiver_data()
 
-def run_powershell_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
+def run_powershell_author_doc_scan(folder_to_index, index_output_file, index_debug_file, index_error_file):
     #Powershell command arguments for indexer script
     ps_command = f"& '{mticonfig.indexer_script}' -foldersPath '{folder_to_index}' -outputCSV '{index_output_file}' "
     ps_command += f"6> '{index_error_file}' "
@@ -129,5 +129,5 @@ def run_powershell_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_o
     if (result.returncode != 0):
         raise IndexerException("Error encountered in Powershell script to process folder.")
 
-def run_python_author_doc_scan(mticonfig:MTIConfig, folder_to_index, index_output_file, index_debug_file, index_error_file):
+def run_python_author_doc_scan(folder_to_index, index_output_file, index_debug_file, index_error_file):
     author_doc_scan.process_author_folder(folder_to_index, mticonfig.doct_name, index_output_file, index_debug_file, index_error_file, mticonfig.debug_flag('indexer'))

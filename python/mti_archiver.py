@@ -5,14 +5,11 @@ from pathlib import Path
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
 from mti.mti_indexer import MTIIndexer
-from mti.mti_config import MTIConfig, MTIDataKey
+from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from wordpressmti.wbg_book_post import WPGBookAPIException
 from wordpressmti import wp_loader_main
 from googlemti import google_csv_loader
 import traceback
-
-# Setup Global Variables, note config is loaded when created, no need to call load again
-mticonfig = None
 
 def get_last_file(file_suffix):
 	directory = Path(MTIConfig.output_dir)
@@ -45,11 +42,11 @@ def launch_indexer():
 		os.makedirs(mticonfig.output_dir, exist_ok=True)		# Output Directory
 
 		# Index the archive folder
-		MTIIndexer.start(mticonfig)
+		MTIIndexer.start()
 		updateMenuText()
 
 		# Load index to google (TODO: Check Google Load flag)
-		google_csv_loader.load_csv_files(mticonfig)
+		google_csv_loader.load_csv_files()
 
 		input("\nIndexing successfull! Press enter to continue.")	#TODO: Figure out how to use console-menu promput utils
 	except Exception as ie:
@@ -60,10 +57,10 @@ def launch_indexer():
 def launch_wp_loader():
 	try:
 		# Load wordpress
-		wp_loader_main.load(mticonfig)
+		wp_loader_main.load()
 
 		# Update google sheet with loaded books
-		google_csv_loader.update_collection_sheet(mticonfig)
+		google_csv_loader.update_collection_sheet()
 
 		input("Press enter to continue.")
 	except WPGBookAPIException as e:
@@ -121,8 +118,6 @@ def create_main_menu():
 # BEGIN PROGRAM ---------------------------------------------------------------------------------------
 
 try:
-	mticonfig = MTIConfig()
-	#input("Press enter to continue")
 
 	# shutil.rmtree(temp_dir)								# Delete Existing Temp Directory??
 	os.makedirs(mticonfig.temp_dir, exist_ok=True)			# Temporary Working Directory

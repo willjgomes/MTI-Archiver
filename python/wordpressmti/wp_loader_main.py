@@ -1,7 +1,7 @@
 import csv
 from mti import book_csv_reader, author_doc_scan
 from wordpressmti.wbg_book_post import WPGBook, WPGBookPostClient, WPGBookAPIException
-from mti.mti_config import MTIConfig, MTIDataKey
+from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from pathlib import Path
 
 class WPLoaderError(Exception):
@@ -9,14 +9,14 @@ class WPLoaderError(Exception):
         self.message = message
         super().__init__(self.message)
 
-def get_dates(mticonfig:MTIConfig):
+def get_dates():
     return (    
         mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT),
         MTIConfig.convert_to_datetime(mticonfig.exe_details.get(MTIDataKey.LAST_IDX_GEN_FILE_DT)),
         MTIConfig.convert_to_datetime(mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)),
     )
 
-def get_file_paths(mticonfig:MTIConfig, last_idx_gen_dt):
+def get_file_paths(last_idx_gen_dt):
     path_root = mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt
     return (        
         Path(path_root + '_Index_New.csv'),
@@ -24,7 +24,7 @@ def get_file_paths(mticonfig:MTIConfig, last_idx_gen_dt):
         Path(path_root + '_Load_Error.csv'),
     )
 
-def get_wbg_client(mticonfig:MTIConfig):
+def get_wbg_client():
     # Setup Book post client (TODO: Maybe only create this once per archiver instead of for every load event)
     wp_url      = mticonfig.ini['WordPress']['SiteURL']
     wp_username = mticonfig.ini['WordPress']['Username']
@@ -33,9 +33,9 @@ def get_wbg_client(mticonfig:MTIConfig):
     return WPGBookPostClient(wp_url, wp_username, wp_password)
 
 
-def load(mticonfig:MTIConfig):
+def load():
     # Setup needed date variables
-    (last_idx_gen_dt, gen_datetime, load_datetime) = get_dates(mticonfig)
+    (last_idx_gen_dt, gen_datetime, load_datetime) = get_dates()
         
     if (not gen_datetime):
         print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} not found. Please run indexer first.")
@@ -43,7 +43,7 @@ def load(mticonfig:MTIConfig):
         print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} dated {last_idx_gen_dt} has previously been loaded.")
     else:
         # Setup needed files for loading books
-        (idx_new_file, loaded_file, load_error_file) = get_file_paths(mticonfig, last_idx_gen_dt)
+        (idx_new_file, loaded_file, load_error_file) = get_file_paths(last_idx_gen_dt)
 
         # Get configuration flags
         isDryRun    = mticonfig.bool_flag('WordPress','LoadDryRun')      
@@ -57,7 +57,7 @@ def load(mticonfig:MTIConfig):
             print('The following documents would have been loaded: \n')
 
         # Get the Wordpress Books Gallery (WBG) client
-        wbgclient = get_wbg_client(mticonfig)
+        wbgclient = get_wbg_client()
 
         # Intiialize book variables for loading books
         book_load_count     = 0
@@ -72,7 +72,7 @@ def load(mticonfig:MTIConfig):
                 (book_exists, post_ids) = wbgclient.check_book_exists(record[f"{doct_prefix} Title"])
                 if (not book_exists):
                     book_load_count += 1
-                    loadedbooks.append(load_book(mticonfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
+                    loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
                 else:
                     book_error_count += 1
                     loaderrors.append(log_book_exists(doct_prefix, record, post_ids))
@@ -115,7 +115,7 @@ def load(mticonfig:MTIConfig):
        
 
 
-def load_book(mticonfig:MTIConfig, isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
+def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
     # Get Document Type Prefix (eg. Article, Book, etc)
     doct_prefix = MTIConfig.tosingular(mticonfig.doct_name)
 

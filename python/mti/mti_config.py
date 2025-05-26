@@ -200,4 +200,6 @@ class MTIConfig:
 		else:
 			return str
 		
+# Setup Global Variables, note config is loaded when created, no need to call load again
+mticonfig = MTIConfig()
 		
