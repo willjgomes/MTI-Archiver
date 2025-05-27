@@ -25,7 +25,8 @@ def get_file_paths(last_idx_gen_dt):
     )
 
 def get_wbg_client():
-    # Setup Book post client (TODO: Maybe only create this once per archiver instead of for every load event)
+    # Setup Book post client 
+    # (TODO: Maybe only create this once per archiver instead of for every load event)
     wp_url      = mticonfig.ini['WordPress']['SiteURL']
     wp_username = mticonfig.ini['WordPress']['Username']
     wp_password = mticonfig.ini['WordPress']['Password']
@@ -101,10 +102,6 @@ def load():
             print(f"Error: File not found at {idx_new_file}")
         except ValueError as ve:
             print(f"Error: {ve}")
-        except WPGBookAPIException as apie:
-            print(f"Error calling WordPress API:\n {apie.response} \n {apie.response.content}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
         else:
             print(mticonfig.idtab, f"Documents loaded     {book_load_count}")
             print(mticonfig.idtab, f"Documents not loaded {book_error_count}")

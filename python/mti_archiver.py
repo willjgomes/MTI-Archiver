@@ -28,7 +28,7 @@ class MenuItem:
 
 def print_error_details():
 	print("=========================================================================================================================")
-	print("Error Details:")
+	print("Error Trace:")
 	print("=========================================================================================================================")
 	traceback.print_exc()
 	print("=========================================================================================================================\n")
@@ -64,7 +64,7 @@ def launch_wp_loader():
 
 		input("Press enter to continue.")
 	except WPGBookAPIException as e:
-		print(e.response)
+		e.print_details()
 		print_error_details()
 	except Exception as e:
 		print("\nUnexpected Error occured running Word Press Loader!\n")

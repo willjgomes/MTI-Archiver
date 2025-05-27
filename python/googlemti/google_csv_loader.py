@@ -1,7 +1,7 @@
 import gspread
 import pandas as pd
-from google.oauth2.service_account import Credentials
-from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
+from mti.mti_config import MTIDataKey, mticonfig
+from googlemti import google_client
 from pathlib import Path
 
 def load_csv_files():   
@@ -48,7 +48,7 @@ def get_collection_sheet():
     return get_sheet('Catalog: ' + mticonfig.coll_name)
 
 def get_sheet(spreadsheet_name):
-    client              = create_google_client(mticonfig.ini['Google']['ServiceAccountKeyFile'])
+    client = google_client.get_gspread_client()
 
     print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
     
@@ -66,17 +66,7 @@ def get_sheet(spreadsheet_name):
 
     print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
 
-    return spreadsheet
-
-def create_google_client(keyfile):
-    # Authenticate using the Service Account JSON key file
-    creds = Credentials.from_service_account_file(keyfile,
-        scopes=["https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive"]
-    )
-
-    return gspread.authorize(creds)
-    
+    return spreadsheet   
 
 def load_csv_file(sheet, tab, file, delimiter=","):
     # Load CSV File into Pandas DataFrame
@@ -124,7 +114,7 @@ def update_collection_sheet():
     if (last_idx_load_dt and not last_google_load_dt==last_idx_load_dt):
         print("Updating Google Sheets ...")
         # Get existing collection sheet and fetch headers
-        sheet = get_collection_sheet(mticonfig)
+        sheet = get_collection_sheet()
         try:
             sheet = sheet.worksheet(mticonfig.doct_name) 
         except gspread.exceptions.WorksheetNotFound:

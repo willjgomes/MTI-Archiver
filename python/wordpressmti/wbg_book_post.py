@@ -1,5 +1,4 @@
-
-import requests, base64, os, json
+import requests, base64, os, json, textwrap
 from rich.console import Console
 
 class WPGBookAPIException(Exception):
@@ -7,6 +6,27 @@ class WPGBookAPIException(Exception):
         self.message    = message
         self.response   = response
         super().__init__(self.message)
+    
+   def print_details(self):
+        req_details = ""
+        try:
+            req_details = json.loads(self.response.request.body)
+        except:
+            req_details = ""                
+
+        print(textwrap.dedent(
+            f'''
+            ============================================================================
+            Wordpress API Call Error Details: 
+            ============================================================================
+            Reason         : {self.message}
+            Request URL    : {self.response.request.url}
+            Request Headers: {self.response.request.headers}
+            Request Details: {req_details}
+            Response Status: {self.response.status_code}
+            Response Content: {self.response.content}
+            ''')
+        )
 
 # WPGBook class to store needed attributes to create WPG Book Post
 class WPGBook:
@@ -170,8 +190,7 @@ class WPGBookPostClient:
             cover_id = media_response['id']
             return cover_id
         else:
-            return ""
-            # raise WPGBookAPIException("Failed to upload book cover", response )
+            raise WPGBookAPIException("Failed to upload cover", response )
 
     def uploadBook(self, book: WPGBook):
         pdf_path = f"{book.base_path}\\{book.folder}\\{book.file}"
@@ -205,7 +224,7 @@ class WPGBookPostClient:
             file_url = media_response.get('source_url')
             return file_url
         else:
-            return ""
+            raise WPGBookAPIException("Failed to upload PDF", response )
 
     def check_book_exists(self, title):
         params = {
