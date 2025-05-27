@@ -10,9 +10,11 @@ def load_csv_files():
     last_idx_run_dt     = mticonfig.exe_details.get(MTIDataKey.LAST_INDEXER_RUN_DT)
     
     if (last_idx_gen_dt and last_idx_gen_dt == last_idx_run_dt):
-        last_idx_output_file = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index.csv')
-        last_idx_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index_Error.csv')
-        last_idx_new_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt + '_Index_New.csv')
+        # Get file paths based on last index generated date
+        file_prefix = f'{mticonfig.output_dir}/{mticonfig.archive_key}_{last_idx_gen_dt}'
+        last_idx_output_file = Path(file_prefix + '_Index.csv')
+        last_idx_error_file  = Path(file_prefix + '_Index_Error.csv')
+        last_idx_new_file    = Path(file_prefix + '_Index_New.csv')
                 
         print("Updating Google Sheet, please wait ...")
 
@@ -25,7 +27,8 @@ def load_csv_files():
             load_csv_file(spreadsheet, tab_name, last_idx_output_file)
         
         # If index was loaded, load the respective index and new files 
-        # TODO: Remove the Index File, only do the new (will replace the Index File with the full inventory)
+        # TODO: Remove the Index File, only do the new 
+        # (will replace the Index File with the full inventory)
         else:
             #tab_name    = mticonfig.doct_name + "-Index"
             #load_csv_file(spreadsheet, tab_name, last_idx_output_file)
@@ -37,7 +40,8 @@ def load_csv_files():
 
         update_summary_tab(spreadsheet, mticonfig.doct_name, last_idx_gen_dt)
 
-        print(mticonfig.idtab, f"Index Date : {last_idx_gen_dt} (Verify in Google Sheets Summary Tab) ")
+        print(mticonfig.idtab, 
+              f"Index Date : {last_idx_gen_dt} (Verify in Google Sheets Summary Tab) ")
         print(f"Google Sheet successfully updated.")
 
 
@@ -62,7 +66,9 @@ def get_sheet(spreadsheet_name):
 
         folder_id = mticonfig.ini['Google']['SharedDriveFolderID']
         spreadsheet = client.create(spreadsheet_name, folder_id) 
-        #spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')  # Share sheet with google user
+
+        # Share sheet with google user
+        #spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')  
 
     print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
 
@@ -95,7 +101,8 @@ def update_summary_tab(sheet, doct_type, index_date):
     try:
         summary_sheet = sheet.worksheet('Summary')         
 
-        cell = summary_sheet.find(doct_type, in_column=1)  # Find cell containig data for doctype
+        # Find cell containig data for doctype
+        cell = summary_sheet.find(doct_type, in_column=1)  
         if (cell):
             summary_sheet.update(f"A{cell.row}",[[doct_type, index_date]])        
         else:
@@ -120,8 +127,10 @@ def update_collection_sheet():
         except gspread.exceptions.WorksheetNotFound:
             sheet = sheet.add_worksheet(title=mticonfig.doct_name, rows="1000", cols="20")
 
+        load_file_prefix = f'{mticonfig.output_dir}/{mticonfig.archive_key}_{last_idx_load_dt}'
+        
         # Load CSV file into a DataFrame
-        load_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Loaded.csv')
+        load_file  = Path( load_file_prefix + '_Loaded.csv')
         df = pd.read_csv(load_file, delimiter="|", dtype=str)
 
         # Replace NaN values with an empty string
@@ -129,7 +138,7 @@ def update_collection_sheet():
 
         headers = sheet.row_values(1)
         if (headers):
-            # Add cmpty fields to data frame for columns that only exist in google sheet
+            # Add empty fields to data frame for columns that only exist in google sheet
             for col in headers:
                 if col not in df.columns:
                     df[col] = ""  # Add missing columns as empty
@@ -150,7 +159,7 @@ def update_collection_sheet():
         # Upload Errors
         spreadsheet = get_indexer_output_sheet()
         tab_name    = mticonfig.doct_name + "-Load-Errors"
-        load_error_file  = Path(mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_load_dt + '_Load_Error.csv')
+        load_error_file  = Path(load_file_prefix + '_Load_Error.csv')
         load_csv_file(spreadsheet, tab_name, load_error_file, delimiter="|")
 
         print("Updates complete.")
