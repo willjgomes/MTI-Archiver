@@ -35,7 +35,35 @@ function enable_cpt_in_rest_api() {
 		);
 
 		register_rest_field( $post_type, 'wbg_download_link', array(
+			'get_callback' => 'get_post_meta_dl_link',			
 			'update_callback' => 'update_post_meta_dl_link',
+			'schema' => null,
+			)
+		);
+
+		register_rest_field( $post_type, 'wbg_publisher', array(
+			'get_callback' => 'get_post_meta_publisher',			
+			'update_callback' => 'update_post_meta_publisher',
+			'schema' => null,
+			)
+		);
+
+		register_rest_field( $post_type, 'wbg_published_on', array(
+			'get_callback' => 'get_post_meta_published_on',			
+			'update_callback' => 'update_post_meta_published_on',
+			'schema' => null,
+			)
+		);
+
+		register_rest_field( $post_type, 'wbg_published_subtitle', array(
+			'get_callback' => 'get_post_meta_subtitle',			
+			'update_callback' => 'update_post_subtitle',
+			'schema' => null,
+			)
+		);
+
+		register_rest_field( $post_type, 'download_media_id', array(
+			'get_callback' => 'get_post_meta_dl_media_id',			
 			'schema' => null,
 			)
 		);
@@ -60,45 +88,86 @@ function get_post_meta_author( $object ) {
 	return get_wbg_post_meta('wbg_author', $object);
 }
 
-function get_post_meta_status( $object ) {
-	return get_wbg_post_meta('wbg_status', $object);
-}
-
 function update_post_meta_author($meta_value, $object) {
 	//error_log("Updating Post Author");
 	return update_wbg_post_meta('wbg_author', $meta_value, $object);
+}
+
+function get_post_meta_status( $object ) {
+	return get_wbg_post_meta('wbg_status', $object);
 }
 
 function update_post_meta_status($meta_value, $object) {
 	return update_wbg_post_meta('wbg_status', $meta_value, $object);
 }
 
-function update_post_meta_dl_link($meta_value, $object) {
+function get_post_meta_publisher( $object ) {
+	return get_wbg_post_meta('wbg_publisher', $object);
+}
 
+function update_post_meta_publisher($meta_value, $object) {
+	return update_wbg_post_meta('wbg_publisher', $meta_value, $object);
+}
+
+function get_post_meta_published_on( $object ) {
+	return get_wbg_post_meta('wbg_published_on', $object);
+}
+
+function update_post_meta_published_on($meta_value, $object) {
+	return update_wbg_post_meta('wbg_published_on', $meta_value, $object);
+}
+
+function get_post_meta_subtitle( $object ) {
+	return get_wbg_post_meta('wbg_subtitle', $object);
+}
+
+function update_post_meta_subtitle($meta_value, $object) {
+	return update_wbg_post_meta('wbg_subtitle', $meta_value, $object);
+}
+
+function get_post_meta_dl_media_id( $object ) {
+	$dl_link = get_wbg_post_meta('wbg_download_link', $object);
+	$dl_id = attachment_url_to_postid($dl_link);
+
+	return $dl_id;
+}
+
+function get_post_meta_dl_link( $object ) {
+	return get_wbg_post_meta('wbg_download_link', $object);
+}
+
+function update_post_meta_dl_link($meta_value, $object) {
 	return update_wbg_post_meta('wbg_download_link', $meta_value, $object);
 }
 
 function get_wbg_post_meta($meta_name, $object){
     $post_id = $object['id'];				//Get the ID of the post
 
-    $meta = get_post_meta( $post_id );
-	error_log("Getting Post Author");
-	error_log("Post ID ".$post_id);
+	$value = get_post_meta($post_id, $meta_name, true);
+	error_log("Getting ".$meta_name." for Post ID ".$post_id." Value: ".$value);
+	return $value;
+    /*
+	// Old Way
 
-    if ( isset( $meta[$meta_name] ) && isset( $meta[$meta_name][0] ) ) {
+	$meta = get_post_meta( $post_id );
+
+	if ( isset( $meta[$meta_name] ) && isset( $meta[$meta_name][0] ) ) {
         //return the post meta
+		//error_log("Meta ".print_r($meta, true));
         return $meta[$meta_name][0];
     }
 
-    // meta not found
+	// meta not found
     return false;
+
+	*/
 }
 
 function update_wbg_post_meta($meta_name, $meta_value, $object){
 	$post_id = $object->ID;				// Get the ID of the post
 	
 	error_log("Post ID: ".$post_id);
-	error_log("Meta: ".$meta_value);
+	error_log("Meta Value: ".$meta_value);
     
 	$havemetafield  = get_post_meta($post_id, $meta_name, false);
     if ($havemetafield) {

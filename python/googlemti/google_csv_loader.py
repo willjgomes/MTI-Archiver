@@ -1,7 +1,7 @@
 import gspread
 import pandas as pd
 from mti.mti_config import MTIDataKey, mticonfig
-from googlemti import google_client
+from googlemti import gspread_client
 from pathlib import Path
 
 def load_csv_files():   
@@ -19,7 +19,7 @@ def load_csv_files():
         print("Updating Google Sheet, please wait ...")
 
         # Get existing google sheet for collection
-        spreadsheet = get_indexer_output_sheet()
+        spreadsheet = gspread_client.get_archiver_report_sheet()
 
         # If index was never loaded, load only the current index as new
         if (not last_idx_load_dt):
@@ -43,36 +43,6 @@ def load_csv_files():
         print(mticonfig.idtab, 
               f"Index Date : {last_idx_gen_dt} (Verify in Google Sheets Summary Tab) ")
         print(f"Google Sheet successfully updated.")
-
-
-def get_indexer_output_sheet():
-    return get_sheet('Archiver Report: ' + mticonfig.coll_name)
-
-def get_collection_sheet():
-    return get_sheet('Catalog: ' + mticonfig.coll_name)
-
-def get_sheet(spreadsheet_name):
-    client = google_client.get_gspread_client()
-
-    print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
-    
-    # Open existing spreadsheet for collection if it exists
-    try:
-        spreadsheet = client.open(spreadsheet_name) 
-    
-    # Create new one if it doesn't exist 
-    except gspread.exceptions.SpreadsheetNotFound:
-        print(mticonfig.idtab, f"Existing sheet not found, creating new one.")
-
-        folder_id = mticonfig.ini['Google']['SharedDriveFolderID']
-        spreadsheet = client.create(spreadsheet_name, folder_id) 
-
-        # Share sheet with google user
-        #spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')  
-
-    print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
-
-    return spreadsheet   
 
 def load_csv_file(sheet, tab, file, delimiter=","):
     # Load CSV File into Pandas DataFrame
@@ -113,7 +83,7 @@ def update_summary_tab(sheet, doct_type, index_date):
         summary_sheet.update("A1", [["Index Type", "Index Date"]])
         summary_sheet.update("A2",[[doct_type, index_date]])
 
-def update_collection_sheet():
+def update_catalog_sheet():
     #Get the load file dates
     last_google_load_dt = mticonfig.exe_details.get(MTIDataKey.LAST_GOOG_LOAD_FILE_DT)
     last_idx_load_dt    = mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)
@@ -121,7 +91,7 @@ def update_collection_sheet():
     if (last_idx_load_dt and not last_google_load_dt==last_idx_load_dt):
         print("Updating Google Sheets ...")
         # Get existing collection sheet and fetch headers
-        sheet = get_collection_sheet()
+        sheet = gspread_client.get_catalog_sheet()
         try:
             sheet = sheet.worksheet(mticonfig.doct_name) 
         except gspread.exceptions.WorksheetNotFound:
@@ -157,7 +127,7 @@ def update_collection_sheet():
         sheet.append_rows(data_to_append)
 
         # Upload Errors
-        spreadsheet = get_indexer_output_sheet()
+        spreadsheet = gspread_client.get_archiver_report_sheet()
         tab_name    = mticonfig.doct_name + "-Load-Errors"
         load_error_file  = Path(load_file_prefix + '_Load_Error.csv')
         load_csv_file(spreadsheet, tab_name, load_error_file, delimiter="|")

@@ -1,5 +1,6 @@
-import requests, base64, os, json, textwrap
+import requests, base64, os, json, textwrap, html
 from rich.console import Console
+from mti.mti_config import mticonfig
 
 class WPGBookAPIException(Exception):
    def __init__(self, message, response):
@@ -52,15 +53,15 @@ class WPGBookPostClient:
 
     def __init__(self, site_url, username, password):
         # Setup WordPress URLs
-        self.__init_urls(site_url)
+        self.__init_urls__(site_url)
 
         # Setup WordPress Authorization
-        self.__init_authorization(username, password)
+        self.__init_authorization__(username, password)
 
         # Additional Properties
         self.dflt_post_cat_id =  self.get_category_id_by_slug("book")
     
-    def __init_urls(self, site_url):
+    def __init_urls__(self, site_url):
         # URL for Wordpress Site
         self.wp_site_url = site_url
 
@@ -79,7 +80,7 @@ class WPGBookPostClient:
         # Library content download base URL
         self.download_url = f"{self.wp_site_url}/wp-content/library/"
 
-    def __init_authorization(self, username, password):
+    def __init_authorization__(self, username, password):
         self.wp_username = username  # Service Account Username
         self.wp_password = password  # Service Account Password
 
@@ -96,14 +97,51 @@ class WPGBookPostClient:
             "Authorization": "Basic " + self.base64_credentials
         }
 
+    def get_book(self, post_id):
+        """
+        Fetches a book post by its ID.
+        Returns the book data as a dictionary if successful, raises an exception if not.
+        """
+        response = requests.get(
+            f"{self.wp_books_post_api_url}/{post_id}",
+            headers=self.headers
+        )
 
-    # WPG Book Post Module Functions, returns post ID if successful, throws error if not  
-    def createBook(self, book: WPGBook, uploadPDF):
+
+        if response.status_code == 200:
+            book_json = response.json()
+
+            #print(book_json)
+            book = WPGBook()
+
+            # The title is html encoded, so we need unescape it
+            book.post_id = post_id
+            book.title = html.unescape(book_json["title"]["rendered"])
+            book.description = html.unescape(book_json["content"]["rendered"])
+            book.author = book_json.get("author")
+            book.publisher = book_json.get("wbg_publisher")
+            book.published_on = book_json.get("wbg_published_on")
+            book.book_categories = book_json.get("wbg_book_categories", [])
+            
+            book.cover_file_id = book_json.get("featured_media")
+            book.file_id = book_json.get("download_media_id")
+
+            return book
+        else:
+            raise WPGBookAPIException("Failed to fetch book", response)
+
+
+    # WPG Book Post Module Functions, returns post ID if successful, throws error if not 
+    # If post_id is passed in it will update existing book
+    def create_book(self, book: WPGBook, uploadPDF, post_id = None):
         console = Console()
         with console.status(f"[bold green][Loading       ] {book.title}") as status:
-            return self._createBook(book, uploadPDF, status)
-   
-    def _createBook(self, book: WPGBook, uploadPDF, status_msg):
+            return self._create_book(book, uploadPDF, status, post_id)
+    
+    # Internal function to create the book post so it can update the console status 
+    # message. This was separated in a function so the entire body didn't have to be
+    # indented in the with clause above.
+    def _create_book(self, book: WPGBook, uploadPDF, status_msg, post_id):
         # Post details
         post_status = "publish"  # Options: 'publish', 'draft', etc.
 
@@ -112,12 +150,15 @@ class WPGBookPostClient:
             "title":                book.title,
             "content":              book.description,
             "status":               post_status,
-            "categories":           self.dflt_post_cat_id,              #Array of category ids, will likely need to translate from csv file
-            "wbg_author":           book.author,
-            "wbg_status":           "active",
-            "wbg_download_link":    f"{self.download_url}{book.folder}/{book.file}",
+            "categories":           self.dflt_post_cat_id,              #Array of category ids, will likely need to translate from csv file            
+            "wbg_status":           "active",            
             "wbg_book_categories":  book.book_categories
         }
+
+        # This is to get around odd cause her API get request not properly returning
+        # author for update operations
+        if (book.author):
+            post_data["author"] = book.author
 
         # Add article specific fields to post data
         post_data.update({
@@ -129,30 +170,31 @@ class WPGBookPostClient:
         # Upload book cover (if exists) and set its cover id
         if (book.cover_file):
             status_msg.update(f"[bold green][Loading Cover  ] {book.title}")
-            cover_id = self.uploadBookCover(book)
+            cover_id = self.upload_book_cover(book)
             post_data["featured_media"] = cover_id
 
         # Upload book pdf file
         if (uploadPDF):
             status_msg.update(f"[bold green][Loading PDF    ] {book.title}")
-            file_url = self.uploadBook(book)
+            file_url = self.upload_book_file(book)
             post_data["wbg_download_link"] = file_url
 
         # Send the POST request to create a new book
-        status_msg.update(f"[bold green][Loading Details] {book.title}")
+        status_msg.update(f"[bold green][Loading Details] {book.title}")        
         response = requests.post(
-            self.wp_books_post_api_url,
+            f"{self.wp_books_post_api_url}{"/"+post_id if post_id else ''}",
             json=post_data,
             headers=self.headers  # Use the headers with the Authorization
         )
 
         # Check the response status
-        if response.status_code == 201:
+        if response.status_code == 200:
             return response.json()['id']
         else:
             raise WPGBookAPIException("Failed to create book", response )
 
-    def uploadBookCover(self, book: WPGBook):
+    
+    def upload_book_cover(self, book: WPGBook):
         image_path = f"{book.base_path}\\{book.folder}\\{book.cover_file}"
 
         # Read the image file
@@ -192,14 +234,14 @@ class WPGBookPostClient:
         else:
             raise WPGBookAPIException("Failed to upload cover", response )
 
-    def uploadBook(self, book: WPGBook):
+    def upload_book_file(self, book: WPGBook):
         pdf_path = f"{book.base_path}\\{book.folder}\\{book.file}"
 
-        # Read the image file
+        # Read the pdf file
         with open(pdf_path, 'rb') as pdf_file:
             pdf_data = pdf_file.read()
 
-        # Extract image filename
+        # Extract pdf filename
         pdf_filename = os.path.basename(pdf_path)
     
         # Clean up the filename for WordPress title
@@ -212,7 +254,7 @@ class WPGBookPostClient:
             'file': (pdf_filename, pdf_data, mime_type)
         }
 
-        # Upload the image
+        # Upload the pdf file
         response = requests.post(
             self.wp_media_api_url,
             headers=self.headers,
@@ -246,7 +288,19 @@ class WPGBookPostClient:
         else:
             return False, []
     
-    
+    def delete_media(self, media_id):
+        response = requests.delete(
+            f"{self.wp_media_api_url}/{media_id}?force=true",
+            headers=self.headers
+        )
+
+        if response.status_code == 200 or response.status_code == 204:
+            return True
+        elif response.status_code == 404:
+            return False
+        else:
+            raise WPGBookAPIException("Failed to delete media", response)
+        
     def get_category_id_by_slug(self, category_slug):
         resp = requests.get(f"{self.wp_categories_api_url}?slug={category_slug}")
         if resp.status_code == 200 and resp.json():
@@ -254,6 +308,15 @@ class WPGBookPostClient:
         else:
             #raise ValueError(f"Category slug '{category_slug}' not found\n {resp}")
             return " "
+
+def get_wbg_client():
+    # Setup Book post client 
+    # (TODO: Maybe only create this once per archiver instead of for every load event)
+    wp_url      = mticonfig.ini['WordPress']['SiteURL']
+    wp_username = mticonfig.ini['WordPress']['Username']
+    wp_password = mticonfig.ini['WordPress']['Password']
+    
+    return WPGBookPostClient(wp_url, wp_username, wp_password)
 
 # Only use this if response.json() does not work even if API returns Content-Type: application/json
 # This method attempts to extract the JSON from response when it is incorrectly including both HTML

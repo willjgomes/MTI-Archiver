@@ -12,3 +12,6 @@ rich>=14.0.0
 
 # Progress Bar Indicator
 tqdm>=4.67.1
+
+# Titlecase Conversion (better than str.title())
+titlecase>=2.4.1

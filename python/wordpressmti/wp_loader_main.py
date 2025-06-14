@@ -1,6 +1,6 @@
 import csv
 from mti import book_csv_reader, author_doc_scan
-from wordpressmti.wbg_book_post import WPGBook, WPGBookPostClient, WPGBookAPIException
+from wordpressmti.wbg_book_post import *
 from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from pathlib import Path
 
@@ -23,16 +23,6 @@ def get_file_paths(last_idx_gen_dt):
         Path(path_root + '_Loaded.csv'),
         Path(path_root + '_Load_Error.csv'),
     )
-
-def get_wbg_client():
-    # Setup Book post client 
-    # (TODO: Maybe only create this once per archiver instead of for every load event)
-    wp_url      = mticonfig.ini['WordPress']['SiteURL']
-    wp_username = mticonfig.ini['WordPress']['Username']
-    wp_password = mticonfig.ini['WordPress']['Password']
-    
-    return WPGBookPostClient(wp_url, wp_username, wp_password)
-
 
 def load():
     # Setup needed date variables
@@ -136,7 +126,7 @@ def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
         new_book.subtitle       = record['Date'] + " " + record['Periodical']
 
     if (not isDryRun):
-        postid = wbgclient.createBook(new_book, uploadPDF)
+        postid = wbgclient.create_book(new_book, uploadPDF)
         print("[Loaded]", record[f"{doct_prefix} Cover File"])
     else:
         print(new_book)
