@@ -46,7 +46,9 @@ def get_sheet(spreadsheet_name):
     return spreadsheet  
 
 
-def get_archiver_report_sheet(coll_name=mticonfig.coll_name):
+def get_archiver_report_sheet(coll_name=None):
+    if coll_name is None:
+        coll_name = mticonfig.coll_name        
     """
     Function to get the Archiver Report Sheet for the given collection
 
@@ -55,7 +57,9 @@ def get_archiver_report_sheet(coll_name=mticonfig.coll_name):
     """
     return get_sheet('Archiver Report: ' + coll_name)
 
-def get_catalog_sheet(coll_name=mticonfig.coll_name):
+def get_catalog_sheet(coll_name=None):
+    if coll_name is None:
+        coll_name = mticonfig.coll_name
     return get_sheet('Catalog: ' + coll_name) 
 
 def get_row_as_dict(worksheet, row_number):

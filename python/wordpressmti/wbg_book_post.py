@@ -158,7 +158,7 @@ class WPGBookPostClient:
         # This is to get around odd cause her API get request not properly returning
         # author for update operations
         if (book.author):
-            post_data["author"] = book.author
+            post_data["wbg_author"] = book.author
 
         # Add article specific fields to post data
         post_data.update({
@@ -188,7 +188,7 @@ class WPGBookPostClient:
         )
 
         # Check the response status
-        if response.status_code == 200:
+        if response.status_code == 200 or response.status_code == 201:
             return response.json()['id']
         else:
             raise WPGBookAPIException("Failed to create book", response )
