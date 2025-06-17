@@ -108,7 +108,11 @@ def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
 
     new_book = WPGBook(
         title       = record[f"{doct_prefix} Title"],
-        author      = get_author(record),
+        author      = WPGBook.get_author(
+                            record['First Name'],
+                            record['Middle Name'],
+                            record['Last Name']
+                        ),
         folder      = record['Author Folder'],
         file        = record[f"{doct_prefix} File"],
         cover_file  = record[f"{doct_prefix} Cover File"],
@@ -136,18 +140,6 @@ def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
     record['Post ID'] = postid
 
     return record
-
-def get_author(record):
-    first_name  = record['First Name']
-    middle_name = record['Middle Name']
-    last_name   = record['Last Name']
-    if (len(middle_name) > 0):
-        author = first_name + " " + middle_name + " " + last_name
-    else:
-        author = first_name + " " + last_name
-    
-    return author
-
 
 def log_book_exists(doct_prefix, record, post_ids):
     record['Error']     = f"{doct_prefix} Already Exists"

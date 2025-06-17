@@ -64,65 +64,129 @@ def start():
         if not w_book:
             print(f"Post ID {post_id} not found in the current collection.")
         else :
-            if action == "Rename Title":                    
-                process_rename_action(w_book, c_book_entry, doct_name[0:-1], value, history_row)
-            else:
-                print(f"Unknown action '{action}' for post ID {post_id}. Skipping.")
+            process_file_update(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
 
         history_tab.insert_row(history_row, 2)   
         actions_tab.delete_rows(2)
 
-        # Update catalog entry
+        # Update catalog entry (first rearrange c_book_entry to align with header cols)
         header = doct_tab.row_values(1)
-        c_row_values = [c_book_entry.get(col, "") for col in header]
+        c_row_values = [c_book_entry.get(col, "") for col in header]        
         doct_tab.update(f"A{book_cell.row}", [c_row_values])
-    
-def process_rename_action(w_book, c_book_entry, doct_name, new_title, history_row):
-    old_title = c_book_entry[f"{doct_name} Title"]
-    new_title = titlecase(new_title.strip())
 
-    history_row.append('Old Title: ' + old_title)
-    history_row.append('New Title: ' + new_title)
+# This Processs the update value for update and sets the w_book field accordingly
+# based on update type. It also returns the part of the filename to replace as 
+# (old, new)  tuple for later file renaming.
+def process_update_value(u_type, w_book, c_book_entry, doct_name, value, history_row):
+    if u_type == "Rename Title":
+        old_title = c_book_entry[f"{doct_name} Title"]
+        new_title = titlecase(value.strip())
+
+        history_row.append('Old Title: ' + old_title)
+        history_row.append('New Title: ' + new_title)
+
+        # Capture the new title
+        w_book.title =  c_book_entry[f"{doct_name} Title"] = new_title
+
+        # Return the old and new title as the file part to replace
+        return (old_title, new_title)
+    
+    elif u_type == "Update Author":
+        firstname, middlename, lastname = (
+            name_part.strip() for name_part in value.strip().split("|")
+        )
+
+        old_author = WPGBook.get_author(c_book_entry["First Name"],
+                                        c_book_entry["Middle Name"],
+                                        c_book_entry["Last Name"])
+        new_author = WPGBook.get_author(firstname, middlename, lastname)
+
+        history_row.append('Old Author: ' + old_author)
+        history_row.append('New Author: ' + new_author)
+
+        # Capture the author
+        w_book.author = new_author
+        c_book_entry["First Name"] = firstname
+        c_book_entry["Middle Name"] = middlename
+        c_book_entry["Last Name"] = lastname            
+
+        # Get the new and old author parts of filename
+        old_file = c_book_entry[f"{doct_name} File"]
+        old_author_part = old_file.split("_")[-1].replace(".pdf", "")
+        if (len(middlename) > 0):        
+            new_author_part = f"{firstname[0].upper()}.{middlename[0].upper()}.-{lastname}"
+        else:
+            new_author_part = f"{firstname[0].upper()}.-{lastname}"
+    
+        return(old_author_part, new_author_part)
+
+    else:
+        print(f"Unknown action '{u_type}' for post ID {w_book.post_id}. Skipping.")
+
+
+
+# This is used to process any update to a document that requires modifying the actual 
+# name of the file (eg. title, author, publication, publication date)
+def process_file_update(u_type, w_book, c_book_entry, doct_name, value, history_row):
+    
+    # Determine the old and new file parts to replace based on the update type and
+    # update the respective w_book field for the update with the new value
+    (old_f_part, new_f_Part) = process_update_value(
+        u_type, w_book, c_book_entry, doct_name, value, history_row)
 
     # Get the old files from catalog entry
     old_book_file   = c_book_entry[f"{doct_name} File"]
     old_cover_file  = c_book_entry[f"{doct_name} Cover File"]
 
-    # Get the folder paths from catalog entry
+    # Get the existing folder paths from catalog entry
     w_book.folder       = c_book_entry.get("Author Folder")
     w_book.base_path    = c_book_entry.get("Base Path")
 
-    # Rename book file using new title
-    w_book.file = process_book_file(w_book, old_book_file, old_title, new_title)
+    # Rename book file and update using new value
+    w_book.file = c_book_entry[f"{doct_name} File"] = (
+        process_book_file(w_book, old_book_file, old_f_part, new_f_Part)
+    )
     
-    # Rename cover file using new title
-    w_book.cover_file = process_cover_file(w_book, old_cover_file, old_title, new_title)
+    # Rename cover file and update using new value
+    w_book.cover_file = c_book_entry[f"{doct_name} Cover File"] = (
+        process_cover_file(w_book, old_cover_file, old_f_part, new_f_Part)
+    )    
+
+    # For author updates, move the files to new author folder
+    if (u_type == "Update Author"):
+
+        w_book.folder = c_book_entry["Author Folder"] = (            
+            process_folder_move(w_book, value)
+        )
     
-    # Capture the new itle
-    w_book.title        = new_title
-    
-    # Reset author to None to prevent overriding since retrieve not working
-    w_book.author       = None    
+    # Set author field to None for all non-author updates to preven upating author
+    # field with bad value since fetching author values not working as expected.
+    else:
+        w_book.author = None
 
     # Update WordPress with new book details
     wbgclient.create_book(w_book, uploadPDF=True, post_id=w_book.post_id)
 
-    # Update the catalog entry fields with new book details
-    c_book_entry[f"{doct_name} Title"]      = w_book.title
-    c_book_entry[f"{doct_name} File"]       = w_book.file
-    c_book_entry[f"{doct_name} Cover File"] = w_book.cover_file
     c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-def process_book_file(w_book, old_file, old_title, new_title):
+# Partial application function to handle book file rename by pre-filling book file id
+def process_book_file(w_book, old_file, old_part, new_part):
     return process_file(w_book.base_path, w_book.folder, old_file, 
-                        old_title, new_title, w_book.file_id)
+                        old_part, new_part, w_book.file_id)
 
-def process_cover_file(w_book, old_file, old_title, new_title):
+# Partial application function to handle cover file rename by pre-filling cover file id
+def process_cover_file(w_book, old_file, old_part, new_part):
     return process_file(w_book.base_path, w_book.folder, old_file, 
-                        old_title, new_title, w_book.cover_file_id)
+                        old_part, new_part, w_book.cover_file_id)
 
-def process_file(base, folder, old_file, old_title, new_title, media_id):
-    new_file = old_file.replace(old_title.replace(" ","-"), new_title.replace(" ","-"))
+# This renames a file by replacing the old_part of the filename with the new_part in 
+# the file system and removes the file from WordPress so it can later be reloaded with 
+# the new file name.
+#
+# The "part" of the file name is usually the component separated by an "_". This can be
+# tht title, author, publication, etc.
+def process_file(base, folder, old_file, old_part, new_part, media_id):
+    new_file = old_file.replace(old_part.replace(" ","-"), new_part.replace(" ","-"))
     
     os.rename(os.path.join(base, folder, old_file), os.path.join(base, folder, new_file))
     print(f"Renamed file: {old_file} -> {new_file}")
@@ -131,7 +195,50 @@ def process_file(base, folder, old_file, old_title, new_title, media_id):
     print("Deleted old file from WordPress:", media_id)
 
     return new_file
+
+def process_folder_move(w_book, author_value):
+    # Get old and new author folders
+    firstname, middlename, lastname = (
+        name_part.strip() for name_part in author_value.strip().split("|")
+    )
+    if (len(middlename) > 0):
+        new_folder = firstname + "_" + middlename + "_" + lastname
+    else:
+        new_folder = firstname + "_" + lastname
+    new_folder = new_folder.replace(" ", "-")
+    old_folder = w_book.folder
     
+    # Get full paths for old and new folder
+    base = w_book.base_path
+    old_path = os.path.join(base, old_folder)
+    new_path = os.path.join(base, new_folder)
+    if not os.path.exists(new_path):
+        os.makedirs(new_path, exist_ok=True)    
+
+    # Move the file from old_path to new_path
+    old_file_path = os.path.join(old_path, w_book.file)
+    new_file_path = os.path.join(new_path, w_book.file)
+    os.rename(old_file_path, new_file_path)
+
+    print(f"Moved file: {old_file_path} -> {new_file_path}")
+
+    # Move the cover file from old_path to new_path
+    old_file_path = os.path.join(old_path, w_book.cover_file)
+    new_file_path = os.path.join(new_path, w_book.cover_file)
+    os.rename(old_file_path, new_file_path)
+
+    print(f"Moved cover file: {old_file_path} -> {new_file_path}")
+
+    # Delete old author folder if empty
+    try:
+        if os.path.isdir(old_path) and not os.listdir(old_path):
+            os.rmdir(old_path)
+            print(f"Deleted empty folder: {old_path}")
+    except Exception as e:
+        print(f"Could not delete folder {old_path}: {e}")
+
+    return new_folder
+
 
 
 

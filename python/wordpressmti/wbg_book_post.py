@@ -49,6 +49,15 @@ class WPGBook:
     def __str__(self):
         return f"Book(title={self.title}, author={self.author}, description={self.description})"
     
+    @staticmethod
+    def get_author(first_name, middle_name, last_name):
+        if (len(middle_name) > 0):
+            author = first_name + " " + middle_name + " " + last_name
+        else:
+            author = first_name + " " + last_name
+
+        return author
+    
 class WPGBookPostClient:
 
     def __init__(self, site_url, username, password):
