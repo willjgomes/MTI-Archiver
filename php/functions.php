@@ -57,7 +57,7 @@ function enable_cpt_in_rest_api() {
 
 		register_rest_field( $post_type, 'wbg_subtitle', array(
 			'get_callback' => 'get_post_meta_subtitle',			
-			'update_callback' => 'update_post_subtitle',
+			'update_callback' => 'update_post_meta_subtitle',
 			'schema' => null,
 			)
 		);
