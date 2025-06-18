@@ -38,7 +38,7 @@ def load():
 
         # Get configuration flags
         isDryRun    = mticonfig.bool_flag('WordPress','LoadDryRun')      
-        uploadPDF   = mticonfig.bool_flag('WordPress','UploadPDF')
+        uploadMedia   = mticonfig.bool_flag('WordPress','UploadMedia')
 
         # Print messages
         print('Wordpress loader started ...')
@@ -63,7 +63,7 @@ def load():
                 (book_exists, post_ids) = wbgclient.check_book_exists(record[f"{doct_prefix} Title"])
                 if (not book_exists):
                     book_load_count += 1
-                    loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp))                
+                    loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp))                
                 else:
                     book_error_count += 1
                     loaderrors.append(log_book_exists(doct_prefix, record, post_ids))
@@ -102,7 +102,7 @@ def load():
        
 
 
-def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
+def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
     # Get Document Type Prefix (eg. Article, Book, etc)
     doct_prefix = MTIConfig.tosingular(mticonfig.doct_name)
 
@@ -130,7 +130,7 @@ def load_book(isDryRun, wbgclient, record, uploadPDF, loadtimestamp):
         new_book.subtitle       = record['Date'] + " " + record['Periodical']
 
     if (not isDryRun):
-        postid = wbgclient.create_book(new_book, uploadPDF)
+        postid = wbgclient.create_book(new_book, uploadMedia)
         print("[Loaded]", record[f"{doct_prefix} Cover File"])
     else:
         print(new_book)

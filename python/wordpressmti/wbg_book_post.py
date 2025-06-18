@@ -142,15 +142,15 @@ class WPGBookPostClient:
 
     # WPG Book Post Module Functions, returns post ID if successful, throws error if not 
     # If post_id is passed in it will update existing book
-    def create_book(self, book: WPGBook, uploadPDF, post_id = None):
+    def create_book(self, book: WPGBook, uploadMedia, post_id = None):
         console = Console()
         with console.status(f"[bold green][Loading       ] {book.title}") as status:
-            return self._create_book(book, uploadPDF, status, post_id)
+            return self._create_book(book, uploadMedia, status, post_id)
     
     # Internal function to create the book post so it can update the console status 
     # message. This was separated in a function so the entire body didn't have to be
     # indented in the with clause above.
-    def _create_book(self, book: WPGBook, uploadPDF, status_msg, post_id):
+    def _create_book(self, book: WPGBook, uploadMedia, status_msg, post_id):
         # Post details
         post_status = "publish"  # Options: 'publish', 'draft', etc.
 
@@ -177,13 +177,13 @@ class WPGBookPostClient:
         })
 
         # Upload book cover (if exists) and set its cover id
-        if (book.cover_file):
+        if (uploadMedia and book.cover_file):
             status_msg.update(f"[bold green][Loading Cover  ] {book.title}")
             cover_id = self.upload_book_cover(book)
             post_data["featured_media"] = cover_id
 
         # Upload book pdf file
-        if (uploadPDF):
+        if (uploadMedia and book.file):
             status_msg.update(f"[bold green][Loading PDF    ] {book.title}")
             file_url = self.upload_book_file(book)
             post_data["wbg_download_link"] = file_url
@@ -200,7 +200,7 @@ class WPGBookPostClient:
         if response.status_code == 200 or response.status_code == 201:
             return response.json()['id']
         else:
-            raise WPGBookAPIException("Failed to create book", response )
+            raise WPGBookAPIException("Failed to create/update book", response )
 
     
     def upload_book_cover(self, book: WPGBook):

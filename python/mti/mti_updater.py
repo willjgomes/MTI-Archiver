@@ -63,7 +63,13 @@ def start():
         w_book = wbgclient.get_book(post_id)
         if not w_book:
             print(f"Post ID {post_id} not found in the current collection.")
-        else :
+            continue    #TODO: Add better error handling for not found and other errros
+        elif action == "Reload Details":
+            # Note: This is currently here to fix mistakes due to API or code issues
+            # such as missing publication fields, etc. May want to find better way to
+            # do this.
+            reload_details(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
+        else :            
             process_file_update(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
 
         history_tab.insert_row(history_row, 2)   
@@ -73,6 +79,18 @@ def start():
         header = doct_tab.row_values(1)
         c_row_values = [c_book_entry.get(col, "") for col in header]        
         doct_tab.update(f"A{book_cell.row}", [c_row_values])
+
+
+def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
+    w_book.title = c_book_entry[f"{doct_name} Title"]
+    w_book.author = None
+    w_book.publisher = c_book_entry.get("Periodical")
+    w_book.published_on = c_book_entry[f"Date"]
+
+    wbgclient.create_book(w_book, uploadMedia=False, post_id=w_book.post_id)
+
+    c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 # This Processs the update value for update and sets the w_book field accordingly
 # based on update type. It also returns the part of the filename to replace as 
@@ -165,7 +183,7 @@ def process_file_update(u_type, w_book, c_book_entry, doct_name, value, history_
         w_book.author = None
 
     # Update WordPress with new book details
-    wbgclient.create_book(w_book, uploadPDF=True, post_id=w_book.post_id)
+    wbgclient.create_book(w_book, uploadMedia=True, post_id=w_book.post_id)
 
     c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
