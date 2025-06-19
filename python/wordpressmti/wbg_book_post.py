@@ -173,7 +173,8 @@ class WPGBookPostClient:
         post_data.update({
             "wbg_publisher":        book.publisher,
             "wbg_published_on":     book.published_on,
-            "wbg_sub_title":        f"{book.publisher} ({book.published_on})"
+            "wbg_sub_title":        
+                f"{book.publisher} ({format_subtitle_date(book.published_on)})"
         })
 
         # Upload book cover (if exists) and set its cover id
@@ -338,4 +339,25 @@ def extract_json(response):
     cleaned = text[start:end]
 
     return json.loads(cleaned)
+
+from datetime import datetime
+
+# Format the date for the subtitle
+def format_subtitle_date(date_str):
+    date_str = date_str.strip()
+
+    # Generate formats based on the length of the date string
+    formats = {
+        4: ("%Y", "%Y"),                       # YYYY -> YYYY
+        7: ("%Y-%m", "%B %Y"),                 # YYYY-MM -> Month YYYY
+        10: ("%Y-%m-%d", "%B %d, %Y"),         # YYYY-MM-DD -> Month DD, YYYY
+    }
+
+    fmt = formats.get(len(date_str))
+    input_fmt, output_fmt = fmt
+    try:
+        return datetime.strptime(date_str, input_fmt).strftime(output_fmt)
+    except Exception:
+        return ""
+
 
