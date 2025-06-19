@@ -173,7 +173,7 @@ class WPGBookPostClient:
         post_data.update({
             "wbg_publisher":        book.publisher,
             "wbg_published_on":     book.published_on,
-            "wbg_sub_title":        f"{book.published_on} {book.publisher}"
+            "wbg_sub_title":        f"{book.publisher} ({book.published_on})"
         })
 
         # Upload book cover (if exists) and set its cover id
