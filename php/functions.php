@@ -55,9 +55,9 @@ function enable_cpt_in_rest_api() {
 			)
 		);
 
-		register_rest_field( $post_type, 'wbg_subtitle', array(
-			'get_callback' => 'get_post_meta_subtitle',			
-			'update_callback' => 'update_post_meta_subtitle',
+		register_rest_field( $post_type, 'wbg_sub_title', array(
+			'get_callback' => 'get_post_meta_sub_title',			
+			'update_callback' => 'update_post_meta_sub_title',
 			'schema' => null,
 			)
 		);
@@ -117,12 +117,12 @@ function update_post_meta_published_on($meta_value, $object) {
 	return update_wbg_post_meta('wbg_published_on', $meta_value, $object);
 }
 
-function get_post_meta_subtitle( $object ) {
-	return get_wbg_post_meta('wbg_subtitle', $object);
+function get_post_meta_sub_title( $object ) {
+	return get_wbg_post_meta('wbg_sub_title', $object);
 }
 
-function update_post_meta_subtitle($meta_value, $object) {
-	return update_wbg_post_meta('wbg_subtitle', $meta_value, $object);
+function update_post_meta_sub_title($meta_value, $object) {
+	return update_wbg_post_meta('wbg_sub_title', $meta_value, $object);
 }
 
 function get_post_meta_dl_media_id( $object ) {
