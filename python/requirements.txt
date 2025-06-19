@@ -15,3 +15,6 @@ tqdm>=4.67.1
 
 # Titlecase Conversion (better than str.title())
 titlecase>=2.4.1
+
+# Gspread Dataframe
+gspread-dataframe>=4.0.0
