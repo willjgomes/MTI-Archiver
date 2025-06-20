@@ -170,11 +170,13 @@ class WPGBookPostClient:
             post_data["wbg_author"] = book.author
 
         # Add article specific fields to post data
+        if (book.published_on == "Undated"): book.published_on = ""
+        subtitle_publisher = book.publisher if book.publisher != "Unknown" else ""
         post_data.update({
             "wbg_publisher":        book.publisher,
             "wbg_published_on":     book.published_on,
             "wbg_sub_title":        
-                f"{book.publisher} {format_subtitle_date(book.published_on)}"
+                f"{subtitle_publisher} {format_subtitle_date(book.published_on)}"
         })
 
         # Upload book cover (if exists) and set its cover id
