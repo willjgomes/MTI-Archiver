@@ -355,9 +355,10 @@ def format_subtitle_date(date_str):
         10: ("%Y-%m-%d", "%B %d, %Y"),         # YYYY-MM-DD -> Month DD, YYYY
     }
 
-    fmt = formats.get(len(date_str))
-    input_fmt, output_fmt = fmt
     try:
+        fmt = formats.get(len(date_str))
+        input_fmt, output_fmt = fmt
+
         return f"({datetime.strptime(date_str, input_fmt).strftime(output_fmt)})"
     except Exception:
         return ""
