@@ -174,7 +174,7 @@ class WPGBookPostClient:
             "wbg_publisher":        book.publisher,
             "wbg_published_on":     book.published_on,
             "wbg_sub_title":        
-                f"{book.publisher} ({format_subtitle_date(book.published_on)})"
+                f"{book.publisher} {format_subtitle_date(book.published_on)}"
         })
 
         # Upload book cover (if exists) and set its cover id
@@ -356,7 +356,7 @@ def format_subtitle_date(date_str):
     fmt = formats.get(len(date_str))
     input_fmt, output_fmt = fmt
     try:
-        return datetime.strptime(date_str, input_fmt).strftime(output_fmt)
+        return f"({datetime.strptime(date_str, input_fmt).strftime(output_fmt)})"
     except Exception:
         return ""
 
