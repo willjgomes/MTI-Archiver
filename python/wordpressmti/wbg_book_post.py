@@ -33,8 +33,9 @@ class WPGBookAPIException(Exception):
 class WPGBook:
 
     # WPGBook Class Functions
-    def __init__(self, title="", description="", author="", folder="", file="", cover_file="", base_path=""):
+    def __init__(self, title="", book_type=None, description="", author="", folder="", file="", cover_file="", base_path=""):
         self.title = title
+        self.book_type = book_type
         self.description = description
         self.author = author
         self.folder = folder
@@ -169,14 +170,21 @@ class WPGBookPostClient:
         if (book.author):
             post_data["wbg_author"] = book.author
 
-        # Add article specific fields to post data
+        # Add publication fieldsto the post data
         if (book.published_on == "Undated"): book.published_on = ""
-        subtitle_publisher = book.publisher if book.publisher != "Unknown" else ""
         post_data.update({
             "wbg_publisher":        book.publisher,
-            "wbg_published_on":     book.published_on,
-            "wbg_sub_title":        
-                f"{subtitle_publisher} {format_subtitle_date(book.published_on)}"
+            "wbg_published_on":     book.published_on                
+        })
+
+        # Generate the subtitle for the book
+        if (book.book_type == "Article"):
+            subtitle_publisher = book.publisher if book.publisher != "Unknown" else ""
+            book.subtitle = f"{subtitle_publisher} {format_subtitle_date(book.published_on, parens=True)}"
+        else:
+            book.subtitle = f"Dated: {format_subtitle_date(book.published_on)}"
+        post_data.update({
+            "wbg_sub_title": book.subtitle
         })
 
         # Upload book cover (if exists) and set its cover id
@@ -345,7 +353,7 @@ def extract_json(response):
 from datetime import datetime
 
 # Format the date for the subtitle
-def format_subtitle_date(date_str):
+def format_subtitle_date(date_str, parens=False):
     date_str = date_str.strip()
 
     # Generate formats based on the length of the date string
@@ -359,7 +367,10 @@ def format_subtitle_date(date_str):
         fmt = formats.get(len(date_str))
         input_fmt, output_fmt = fmt
 
-        return f"({datetime.strptime(date_str, input_fmt).strftime(output_fmt)})"
+        subtitle = f"{datetime.strptime(date_str, input_fmt).strftime(output_fmt)}"
+        if parens: subtitle = f"({subtitle})"
+        
+        return subtitle
     except Exception:
         return ""
 

@@ -108,6 +108,7 @@ def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
 
     new_book = WPGBook(
         title       = record[f"{doct_prefix} Title"],
+        book_type        = doct_prefix,
         author      = WPGBook.get_author(
                             record['First Name'],
                             record['Middle Name'],
@@ -127,7 +128,8 @@ def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
     if (doct_prefix == "Article"):
         new_book.published_on   = record['Date']
         new_book.publisher      = record['Periodical']
-        new_book.subtitle       = record['Date'] + " " + record['Periodical']
+    elif (doct_prefix == "Letter"):
+        new_book.published_on   = record['Date']
 
     if (not isDryRun):
         postid = wbgclient.create_book(new_book, uploadMedia)
