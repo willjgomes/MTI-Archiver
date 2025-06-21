@@ -51,7 +51,7 @@ def launch_indexer():
 		input("\nIndexing successfull! Press enter to continue.")	
 	except Exception as ie:
 		print("\nUnable to run Indexer!\n    !!! ", ie)
-		input("Press enter to continue.")	#TODO: Figure out console-menu promput utils
+		print_error_details()
 
 # Loader function to load the new indexed documents to WordPress Books Gallery Plugin
 def launch_wp_loader():

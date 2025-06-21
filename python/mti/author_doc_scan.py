@@ -38,14 +38,14 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
                 firstname, middlename, lastname = match.groups()
                 middlename = middlename if middlename else ""
                 
-                for doc_file in os.scandir(author_folder.path):
+                for doc_file in scan_recursive(author_folder.path):
                     if doc_file.is_file():                        
                         debug_msg = f"==== Processing File ==> [{doc_file.name}]"
                         idx_debug.append(debug_msg)
                         debug_idx = len(idx_debug) - 1
                         
                         try:
-                            doc_record = create_doc_record(folders_path, author_folder, doct_name, doc_file, firstname, middlename, lastname)                           
+                            doc_record = create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, lastname)                           
 
                             if (len(doc_record) > 0):
                                 idx_data.append(doc_record)
@@ -85,6 +85,14 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
     print(f"\t==>")
     print(f"\t==> Author Folders Skipped : {authors_skipped_count}")
     print(f"\t==> Errors Encountered     : {error_count}")
+    
+
+def scan_recursive(path):
+    with os.scandir(path) as entries:
+        for entry in entries:
+            yield entry
+            if entry.is_dir(follow_symlinks=False):
+                yield from scan_recursive(entry.path)
 
 
 def get_fieldnames(doct_name):
@@ -103,10 +111,15 @@ def get_fieldnames(doct_name):
             'Date',
             'Periodical'
         ]
+    elif (doct_name == 'Letter'):
+        fieldnames[3:1] = [
+            'Date'
+        ]
+
     return fieldnames
 
 
-def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstname, middlename, lastname):
+def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, lastname):
     doc_record = {}
     
     #match = re.match(r"^(.*?)_", book_file.name) #matches first '_'
@@ -115,10 +128,16 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
                             
         title = match.group(1).replace('-', ' ')                            
         cover_file_name = match.group(1) + "_cover"
-        cover_file = next((f.name for f in os.scandir(author_folder.path) if f.is_file() and f.name.startswith(cover_file_name)), "")
+        print(doc_file.path)
+        cover_file = next((f.name for f in os.scandir(os.path.dirname(doc_file.path)) if f.is_file() and f.name.startswith(cover_file_name)), "")
         if (len(cover_file) == 0):
             raise DocError(f"{doct_name} cover file not found, check if missing or improperly named.")
                             
+        # Get the path for file relative to the base path, in most cases this
+        # will be the author folder, but for letters this could also be a subfolder of 
+        # the author folder.
+        author_folder = os.path.dirname(os.path.relpath(doc_file.path,folders_path))
+        
         # Initialize doc details dictionary record
         doc_record = {
             "First Name": firstname,
@@ -127,7 +146,7 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
             f"{doct_name} Title": title,
             f"{doct_name} File": doc_file.name,
             f"{doct_name} Cover File": cover_file,
-            "Author Folder": author_folder.name,
+            "Author Folder": author_folder,
             "Base Path": folders_path
         }
 
@@ -138,21 +157,33 @@ def create_doc_record(folders_path, author_folder, doct_name, doc_file, firstnam
     return doc_record
     
 def add_doc_details(doct_name, doc_record):
+    expected_num_parts = {
+        'Article': 3,
+        'Letter': 2
+    }
+
+    title = doc_record.get(f'{doct_name} Title')
+    parts = title.split('_')
+
+    if len(parts) > expected_num_parts.get(doct_name):
+        raise DocError(f"{doct_name} file not properly named, too many underscores.")
+    elif len(parts) < expected_num_parts.get(doct_name):
+        raise DocError(f"{doct_name} file not properly named, too few underscores.")
+
     if (doct_name == 'Article'):
-        title = doc_record.get('Article Title')
-        parts = title.split('_')
-
-        if len(parts) > 3:
-            raise DocError(f"{doct_name} file not properly named, too many underscores.")
-        elif len(parts) < 3:
-            raise DocError(f"{doct_name} file not properly named, too few underscores.")
-
         date, periodical, title, *_ = tuple(parts)
 
         doc_record.update({
             "Date":date.replace(" ", "-"),
             "Periodical":periodical,
             "Article Title":title
+        })
+    elif (doct_name == 'Letter'):
+        date, title = tuple(parts)
+
+        doc_record.update({
+            "Date":date.replace(" ", "-"),
+            "Letter Title":title
         })
 
     return doc_record
