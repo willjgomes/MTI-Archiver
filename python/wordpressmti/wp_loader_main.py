@@ -122,6 +122,9 @@ def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
     
     # Set book categories
     book_categories = mticonfig.ini[mticonfig.archive_sectkey]['BookCategories']
+    # TODO: Find better way to handle this instead of hard-coding
+    if (new_book.author == "Mother Teresa"):
+        book_categories = book_categories.replace("letters-to-mt", "letters-by-mt")
     new_book.book_categories = [s.strip() for s in book_categories.split(",")]   
 
     # Add article specific fields
