@@ -91,7 +91,7 @@ def scan_recursive(path):
     with os.scandir(path) as entries:
         for entry in entries:
             yield entry
-            if entry.is_dir(follow_symlinks=False):
+            if entry.is_dir(follow_symlinks=False) and "DO NOT LOAD" not in entry.name.upper() :
                 yield from scan_recursive(entry.path)
 
 
