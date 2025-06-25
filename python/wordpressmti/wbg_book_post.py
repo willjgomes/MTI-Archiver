@@ -213,6 +213,24 @@ class WPGBookPostClient:
         else:
             raise WPGBookAPIException("Failed to create/update book", response )
 
+    def update_categories(self, post_id, categories_to_add, categories_to_remove):
+        post_data = {
+            "wbg_book_categories":  categories_to_add,
+            "categories_to_remove": categories_to_remove
+        }
+        
+        response = requests.post(
+            f"{self.wp_books_post_api_url}/{post_id}",
+            json=post_data,
+            headers=self.headers  # Use the headers with the Authorization
+        )
+
+        # Check the response status
+        if response.status_code == 200:
+            return response.json()['id']
+        else:
+            raise WPGBookAPIException("Failed to update book categories.", response )
+
     
     def upload_book_cover(self, book: WPGBook):
         image_path = f"{book.base_path}\\{book.folder}\\{book.cover_file}"

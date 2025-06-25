@@ -6,7 +6,7 @@ from gspread_dataframe import get_as_dataframe
 from mti.mti_config import MTIDataKey, mticonfig
 from wordpressmti.wbg_book_post import *
 from datetime import datetime
-import os, pandas as pd
+import os, re, pandas as pd
 
 def get_updater_actions_sheet():
     return gspread_client.get_sheet('Archiver Updates')
@@ -64,11 +64,15 @@ def start():
         # Get the related catalog entry details
         (c_book_entry, c_row_num) = get_catalog_entry(post_id, coll_name, doct_name)
 
+        isEntryUpdatedRequired = True
         # Process the action
         w_book = wbgclient.get_book(post_id)
         if not w_book:
             print(f"Post ID {post_id} not found in the current collection.")
             continue    #TODO: Add better error handling for not found and other errros
+        elif action == "Update Categories":
+            process_category_updates(w_book, value, history_row)
+            isEntryUpdateRequired = False
         elif action == "Reload Details":
             # Note: This is currently here to fix mistakes due to API or code issues
             # such as missing publication fields, etc. 
@@ -77,7 +81,8 @@ def start():
         else :            
             process_file_update(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
 
-        update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num)
+        if (isEntryUpdateRequired):
+            update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num)
 
         # Move action to history tab
         history_tab.insert_row(history_row, 2)   
@@ -125,6 +130,51 @@ def update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num):
     #Also update the datafrane
     doct_df = catalog_tabsdf_dict.get((coll_name, doct_name))
     doct_df.loc[c_row_num, c_book_entry.keys()] = pd.Series(c_book_entry)
+
+def process_category_updates(w_book, value, history_row):
+    if not cateogry_value_is_valid(value):
+        raise Exception("Update category values is not formatted properly: ", value)
+
+    value = value.replace(" ","");
+    remove_str = re.search(r'\([^)]*\)', value)
+
+    if (remove_str):
+        remove_str = remove_str.group(0)
+        add_str = value.replace(remove_str, "")
+        remove_str = remove_str[1:-1]
+    else:
+        add_str = value.strip()
+
+    categories_to_add = add_str.split(",") if add_str else []    
+    categories_to_remove = remove_str.split(",") if remove_str else []
+            
+    wbgclient.update_categories(w_book.post_id, categories_to_add, categories_to_remove)
+
+    history_row.append("Added: " + ",".join(categories_to_add))
+    history_row.append("Removed: " + ",".join(categories_to_remove))
+
+def cateogry_value_is_valid(value):
+    pattern = re.compile(r"""
+        ^\s*
+        (                                                        # Case 1: Parens at start
+            \(\s*[\w-]+(\s*,\s*[\w-]+)*\s*\)\s*,\s*               # (w1, w2, ..., wn),
+            [\w-]+(\s*,\s*[\w-]+)*                                # word(s) after
+        |
+            [\w-]+(\s*,\s*[\w-]+)*                                # Case 2: word(s) first
+            \s*,\s*\(\s*[\w-]+(\s*,\s*[\w-]+)*\s*\)               # ,(w1, w2, ..., wn)
+        |
+            \(\s*[\w-]+(\s*,\s*[\w-]+)*\s*\)                      # Only parens group
+        |
+            [\w-]+(\s*,\s*[\w-]+)*                                # Only non-parens words
+        )
+        \s*$
+    """, re.VERBOSE)
+
+    return pattern.fullmatch(value)
+
+
+
+
 
 def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
     w_book.title = c_book_entry[f"{doct_name} Title"]

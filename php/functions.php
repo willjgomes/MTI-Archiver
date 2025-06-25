@@ -80,6 +80,21 @@ function enable_cpt_in_rest_api() {
 				]],
 			)
 		);
+
+		#TODO: Determine if this is the best way to remove a category, ie a field
+		#of the post or a separate endpoint.
+		register_rest_field( $post_type, 'categories_to_remove', array(
+			'update_callback' => 'remove_book_categories',
+			
+			//Define schema for field type to be an array of integers or strings
+			'schema' => [	
+				'type'  => 'array',
+				'items' => [
+					'type' => ['string', 'integer'], 
+				]],
+			)
+		);
+
     }
 }
 add_action( 'rest_api_init', 'enable_cpt_in_rest_api' );
@@ -208,8 +223,27 @@ function update_wbg_post_book_categories($meta_value, $object) {
 
     // If terms are provided, update them, otherwise, do nothing
     if (!empty($meta_value)) {
+        // Append the new terms for the 'book_category' taxonomy
+        $ret = wp_set_object_terms($post_id, $meta_value, 'book_category', true);        
+		error_log("Return: ".$ret);
+    }
+
+	return true;
+}
+
+function remove_book_categories($meta_value, $object) {
+	// Get the post ID 
+	// Apparently in update method the $object passed in is a JSON object, 
+	// so use the -> accesor to get ID)
+    $post_id = $object->ID;
+
+	error_log("Post ID: ".$post_id);
+	error_log("Categories to remove: ".print_r($meta_value, true));
+
+    // If terms are provided, update them, otherwise, do nothing
+    if (!empty($meta_value)) {
         // Set the new terms for the 'book_category' taxonomy
-        $ret = wp_set_object_terms($post_id, $meta_value, 'book_category');        
+        $ret = wp_remove_object_terms($post_id, $meta_value, 'book_category');        
 		error_log("Return: ".$ret);
     }
 
