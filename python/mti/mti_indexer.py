@@ -24,7 +24,7 @@ class MTIIndexer:
             #TODO: It appears once you process the diff, you can't read the same content from it again, it appears to become empty
 
             # Extract only the new lines that are in file2
-            new_lines = [line[1:] for line in diff if line.startswith('+ ')]
+            new_lines = [line[2:] for line in diff if line.startswith('+ ')]
 
             # Add header row from
             new_lines.insert(0, file1_lines[0])
