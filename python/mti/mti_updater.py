@@ -64,7 +64,6 @@ def start():
         # Get the related catalog entry details
         (c_book_entry, c_row_num) = get_catalog_entry(post_id, coll_name, doct_name)
 
-        isEntryUpdatedRequired = True
         # Process the action
         w_book = wbgclient.get_book(post_id)
         if not w_book:
@@ -72,7 +71,6 @@ def start():
             continue    #TODO: Add better error handling for not found and other errros
         elif action == "Update Categories":
             process_category_updates(w_book, value, history_row)
-            isEntryUpdateRequired = False
         elif action == "Reload Details":
             # Note: This is currently here to fix mistakes due to API or code issues
             # such as missing publication fields, etc. 
@@ -81,8 +79,7 @@ def start():
         else :            
             process_file_update(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
 
-        if (isEntryUpdateRequired):
-            update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num)
+        update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num)
 
         # Move action to history tab
         history_tab.insert_row(history_row, 2)   
@@ -118,6 +115,9 @@ def get_catalog_df(coll_name, doct_name):
     return doct_df
 
 def update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num):
+    #Set the update date time
+    c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # Update catalog entry (first rearrange c_book_entry to align with header cols)
     doct_tab = catalog_tabs_dict.get((coll_name, doct_name))
 
@@ -183,8 +183,6 @@ def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
     w_book.published_on = c_book_entry[f"Date"]
 
     wbgclient.create_book(w_book, uploadMedia=False, post_id=w_book.post_id)
-
-    c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 # This Processs the update value for update and sets the w_book field accordingly
@@ -279,8 +277,6 @@ def process_file_update(u_type, w_book, c_book_entry, doct_name, value, history_
 
     # Update WordPress with new book details
     wbgclient.create_book(w_book, uploadMedia=True, post_id=w_book.post_id)
-
-    c_book_entry['WBG Update Date'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # Partial application function to handle book file rename by pre-filling book file id
 def process_book_file(w_book, old_file, old_part, new_part):
