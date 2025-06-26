@@ -306,7 +306,10 @@ def process_file(base, folder, old_file, old_part, new_part, media_id):
     return new_file
 
 def process_folder_move(w_book, author_value):
-    # Get old and new author folders
+    # Get old author folder
+    old_folder = w_book.folder
+    
+    # Get new author folder (account for sub-folder)
     firstname, middlename, lastname = (
         name_part.strip() for name_part in author_value.strip().split("|")
     )
@@ -315,7 +318,9 @@ def process_folder_move(w_book, author_value):
     else:
         new_folder = firstname + "_" + lastname
     new_folder = new_folder.replace(" ", "-")
-    old_folder = w_book.folder
+    if (old_folder.find("\\") > 0):
+        _, tail = old_folder.split("\\", 1)
+        new_folder = f"{new_folder}\\{tail}" 
     
     # Get full paths for old and new folder
     base = w_book.base_path
