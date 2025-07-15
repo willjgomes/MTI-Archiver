@@ -54,10 +54,10 @@ def launch_indexer():
 		print_error_details()
 
 # Loader function to load the new indexed documents to WordPress Books Gallery Plugin
-def launch_wp_loader():
+def launch_wp_loader(loadManual=False):
 	try:
 		# Run the loader to load documents/books to Wordpress
-		wp_loader_main.load()
+		wp_loader_main.load(loadManual)
 
 		# Update the catalog sheet with loaded books
 		google_csv_loader.update_catalog_sheet()
@@ -143,6 +143,9 @@ def quick_launch(qlaunch):
 			launch_indexer()
 		case "LOADER":
 			launch_wp_loader()
+		case "LOADMANUAL":
+			# Load Manually created Index_new File
+			launch_wp_loader(loadManual=True)
 		case "UPDATER":
 			launch_updater()
 

@@ -16,25 +16,37 @@ def get_dates():
         MTIConfig.convert_to_datetime(mticonfig.exe_details.get(MTIDataKey.LAST_IDX_LOAD_FILE_DT)),
     )
 
-def get_file_paths(last_idx_gen_dt):
+def get_file_paths(last_idx_gen_dt, loadManual):
     path_root = mticonfig.output_dir + '/' + mticonfig.archive_key + '_' + last_idx_gen_dt
+
+    idx_new_file = ""
+    if (loadManual):
+        # If loading manually created index file, rename the file to manually dated
+        # idexn new file
+        manual_file = mticonfig.output_dir + '/' + mticonfig.archive_key + '_Manual.csv'
+        idx_new_file = path_root + '_Manual_Index_New.csv'
+        os.rename(manual_file, idx_new_file)
+    else:
+        idx_new_file = path_root + '_Index_New.csv'
+
     return (        
-        Path(path_root + '_Index_New.csv'),
+        Path(idx_new_file),
         Path(path_root + '_Loaded.csv'),
         Path(path_root + '_Load_Error.csv'),
     )
 
-def load():
+def load(loadManual=False):
     # Setup needed date variables
     (last_idx_gen_dt, gen_datetime, load_datetime) = get_dates()
         
-    if (not gen_datetime):
+    if (not gen_datetime and not loadManual):
         print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} not found. Please run indexer first.")
-    elif (load_datetime and (load_datetime == gen_datetime)):
+    elif (load_datetime and (load_datetime == gen_datetime) and not loadManual):
         print(f"Index for {mticonfig.coll_name} { mticonfig.doct_name} dated {last_idx_gen_dt} has previously been loaded.")
     else:
         # Setup needed files for loading books
-        (idx_new_file, loaded_file, load_error_file) = get_file_paths(last_idx_gen_dt)
+        if (loadManual): last_idx_gen_dt = mticonfig.get_timestamp()
+        (idx_new_file, loaded_file, load_error_file) = get_file_paths(last_idx_gen_dt, loadManual)
 
         # Get configuration flags
         isDryRun    = mticonfig.bool_flag('WordPress','LoadDryRun')      
