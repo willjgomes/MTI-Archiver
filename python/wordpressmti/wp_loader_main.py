@@ -71,8 +71,10 @@ def load(loadManual=False):
         doct_prefix         = MTIConfig.tosingular(mticonfig.doct_name)
         
         try:
-            for record in book_csv_reader.read_csv_file(doct_prefix, idx_new_file):                
-                (book_exists, post_ids) = wbgclient.check_book_exists(record[f"{doct_prefix} Title"])
+            for record in book_csv_reader.read_csv_file(doct_prefix, idx_new_file):
+                title = record[f"{doct_prefix} Title"]
+                date = record.get('Date')
+                (book_exists, post_ids) = wbgclient.check_book_exists(title, date)
                 if (not book_exists):
                     book_load_count += 1
                     loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp))                
