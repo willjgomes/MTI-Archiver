@@ -156,9 +156,12 @@ def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, 
     return doc_record
     
 def add_doc_details(doct_name, doc_record):
+    # Determine if document name includes expected parts (date, periodical, title, etc)
+    # (e.g. Article is Date_Peridical_Title, Letter is Date_Title, Book is Title)
     expected_num_parts = {
         'Article': 3,
-        'Letter': 2
+        'Letter': 2,
+        'Book': 1
     }
 
     title = doc_record.get(f'{doct_name} Title')
