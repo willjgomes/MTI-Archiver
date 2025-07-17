@@ -306,7 +306,7 @@ class WPGBookPostClient:
         else:
             raise WPGBookAPIException("Failed to upload PDF", response )
 
-    def check_book_exists(self, title, date):
+    def check_book_exists(self, title):
         params = {
             "search": title  # Search for posts with this title
         }
@@ -317,24 +317,14 @@ class WPGBookPostClient:
             headers=self.headers
         )
 
-        book_exists = False
-        post_ids = []        
         if response.status_code == 200:
             posts = extract_json(response)
-            for post in posts:
-                # Unescape the title to match the search term
-                post_title = html.unescape(post['title']['rendered'])
-                post_date  = post.get('wbg_published_on', '').strip()
-                
-                # Handle empty date values
-                if (date == 'Undated'): date = None
-                if (post_date == ''): post_date = None
-                
-                if ((post_title.lower() == title.lower()) and post_date == date):
-                    book_exists = True
-                    post_ids.append(post['id'])
-        
-        return book_exists, post_ids
+            if posts:
+                return True, [post['id'] for post in posts]  # Return True and matching post IDs
+            else:
+                return False, []
+        else:
+            return False, []
     
     def delete_media(self, media_id):
         response = requests.delete(
