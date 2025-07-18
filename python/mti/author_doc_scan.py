@@ -128,7 +128,8 @@ def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, 
                             
         title = match.group(1).replace('-', ' ')                            
         cover_file_name = match.group(1) + "_cover"
-        cover_file = next((f.name for f in os.scandir(os.path.dirname(doc_file.path)) if f.is_file() and f.name.startswith(cover_file_name)), "")
+        cover_file = next((f.name for f in os.scandir(os.path.dirname(doc_file.path)) 
+            if f.is_file() and f.name.upper().startswith(cover_file_name.upper())), "")
         if (len(cover_file) == 0):
             raise DocError(f"{doct_name} cover file not found, check if missing or improperly named.")
                             
