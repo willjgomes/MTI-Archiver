@@ -72,9 +72,9 @@ def load(loadManual=False):
         
         try:
             for record in book_csv_reader.read_csv_file(doct_prefix, idx_new_file):
-                title = record[f"{doct_prefix} Title"]
-                date = record.get('Date')
-                (book_exists, post_ids) = wbgclient.check_book_exists(title, date)
+                new_book = record_to_book(record, doct_prefix)
+
+                (book_exists, post_ids) = wbgclient.check_book_exists(new_book)
                 if (not book_exists):
                     book_load_count += 1
                     loadedbooks.append(load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp))                
@@ -115,11 +115,7 @@ def load(loadManual=False):
             print('\n ===== Dry Run Output ==== \n')
        
 
-
-def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
-    # Get Document Type Prefix (eg. Article, Book, etc)
-    doct_prefix = MTIConfig.tosingular(mticonfig.doct_name)
-
+def record_to_book(record, doct_prefix):
     new_book = WPGBook(
         title       = record[f"{doct_prefix} Title"],
         book_type        = doct_prefix,
@@ -133,7 +129,7 @@ def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
         cover_file  = record[f"{doct_prefix} Cover File"],
         base_path   = record['Base Path']
     )
-    
+
     # Set book categories
     book_categories = mticonfig.ini[mticonfig.archive_sectkey]['BookCategories']
     # TODO: Find better way to handle this instead of hard-coding
@@ -147,6 +143,13 @@ def load_book(isDryRun, wbgclient, record, uploadMedia, loadtimestamp):
         new_book.publisher      = record['Periodical']
     elif (doct_prefix == "Letter"):
         new_book.published_on   = record['Date']
+
+    return new_book
+
+
+def load_book(isDryRun, new_book, wbgclient, record, uploadMedia, loadtimestamp):
+    # Get Document Type Prefix (eg. Article, Book, etc)
+    doct_prefix = MTIConfig.tosingular(mticonfig.doct_name)    
 
     if (not isDryRun):
         postid = wbgclient.create_book(new_book, uploadMedia)
