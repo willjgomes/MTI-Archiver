@@ -111,7 +111,7 @@ def get_fieldnames(doct_name):
             'Date',
             'Periodical'
         ]
-    elif (doct_name == 'Letter' or doct_name ==) 'Dissertation':
+    elif (doct_name == 'Letter' or doct_name == 'Dissertation'):
         fieldnames[3:1] = [
             'Date'
         ]
