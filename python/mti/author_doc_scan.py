@@ -111,7 +111,7 @@ def get_fieldnames(doct_name):
             'Date',
             'Periodical'
         ]
-    elif (doct_name == 'Letter'):
+    elif (doct_name == 'Letter' or doct_name ==) 'Dissertation':
         fieldnames[3:1] = [
             'Date'
         ]
@@ -163,6 +163,7 @@ def add_doc_details(doct_name, doc_record):
         'Article': 3,
         'Journal': 3,    
         'Letter': 2,
+        'Dissertation': 2,        
         'Book': 1
     }
 
@@ -182,12 +183,12 @@ def add_doc_details(doct_name, doc_record):
             "Periodical":periodical,
             f"{doct_name} Title":title
         })
-    elif (doct_name == 'Letter'):
+    elif (doct_name == 'Letter' or doct_name == 'Dissertation'):
         date, title = tuple(parts)
 
         doc_record.update({
             "Date":date.replace(" ", "-"),
-            "Letter Title":title
+            f"{doct_name} Title":title
         })
 
     return doc_record
