@@ -106,7 +106,7 @@ def get_fieldnames(doct_name):
         'Author Folder',
         'Base Path',
     ]
-    if (doct_name == 'Article'):
+    if (doct_name == 'Article' or doct_name == 'Journal'):
         fieldnames[3:1] = [
             'Date',
             'Periodical'
@@ -161,6 +161,7 @@ def add_doc_details(doct_name, doc_record):
     # (e.g. Article is Date_Peridical_Title, Letter is Date_Title, Book is Title)
     expected_num_parts = {
         'Article': 3,
+        'Journal': 3,    
         'Letter': 2,
         'Book': 1
     }
@@ -173,13 +174,13 @@ def add_doc_details(doct_name, doc_record):
     elif len(parts) < expected_num_parts.get(doct_name):
         raise DocError(f"{doct_name} file not properly named, too few underscores.")
 
-    if (doct_name == 'Article'):
+    if (doct_name == 'Article' or doct_name == 'Journal'):
         date, periodical, title, *_ = tuple(parts)
 
         doc_record.update({
             "Date":date.replace(" ", "-"),
             "Periodical":periodical,
-            "Article Title":title
+            f"{doct_name} Title":title
         })
     elif (doct_name == 'Letter'):
         date, title = tuple(parts)
