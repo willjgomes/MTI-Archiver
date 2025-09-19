@@ -164,7 +164,7 @@ def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, 
         }
 
         doc_record = add_doc_details(doct_name, doc_record)
-    elif "_cover" not in doc_file.name:
+    elif all(substr not in doc_file.name for substr in ["_cover", "thumbs.db"]):
         raise DocError(f"{doct_name} not properly named. Title does not match regex pattern.")
 
     return doc_record
