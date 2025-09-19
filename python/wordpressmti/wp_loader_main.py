@@ -153,7 +153,7 @@ def load_book(isDryRun, new_book, wbgclient, record, uploadMedia, loadtimestamp)
 
     if (not isDryRun):
         postid = wbgclient.create_book(new_book, uploadMedia)
-        print("[Loaded]", record[f"{doct_prefix} Cover File"])
+        print("[Loaded]", record[f"{doct_prefix} Title"])
     else:
         print(new_book)
         postid = 'Dry Run'
