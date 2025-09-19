@@ -18,3 +18,6 @@ titlecase>=2.4.1
 
 # Gspread Dataframe
 gspread-dataframe>=4.0.0
+
+# Python Imaging Library (for cover generation)
+pillow>=11.3.0
