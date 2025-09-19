@@ -108,7 +108,6 @@ def generate_cover(title, author, folder, filename):
 
     # Save the image
     img.save(output_path)
-    print(f"Cover image saved to {output_path}")
 
 
 
