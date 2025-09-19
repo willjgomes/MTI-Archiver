@@ -1,5 +1,7 @@
 import os, csv, re
-from mti.mti_config import MTIConfig
+from mti.mti_config import MTIConfig, mticonfig
+from mti.cover_generator import generate_cover
+from wordpressmti.wbg_book_post import WPGBook
 from tqdm import tqdm
 
 class DocError(Exception):
@@ -125,17 +127,28 @@ def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, 
     #match = re.match(r"^(.*?)_", book_file.name) #matches first '_'
     match = re.match(r"^(.+)_([^_]*)$", doc_file.name)
     if match and "_cover" not in doc_file.name:
+
+        # Get the doc folder, the reason this is not the folders_path, is that it
+        # could be a subfolder under the author folder, such as for letters
+        doc_folder = os.path.dirname(doc_file.path)
                             
         title = match.group(1).replace('-', ' ')                            
         cover_file_name = match.group(1) + "_cover"
-        cover_file = next((f.name for f in os.scandir(os.path.dirname(doc_file.path)) 
-            if f.is_file() and f.name.upper().startswith(cover_file_name.upper())), "")
+        cover_file = next((f.name for f in os.scandir(doc_folder) 
+            if f.is_file() and f.name.upper().startswith(cover_file_name.upper())), "")        
         if (len(cover_file) == 0):
-            raise DocError(f"{doct_name} cover file not found, check if missing or improperly named.")
+            if (mticonfig.bool_flag('Settings','GenerateCover')):
+                #This may not be the best place to generate book cover, but it was the easiest                
+                author_name  = WPGBook.get_author(firstname, middlename, lastname)
+                cover_file = generate_cover(title, author_name, doc_folder, cover_file_name)
+                idx_debug.append(f"==    Generated Cover File: {cover_file}") 
+            else:
+                raise DocError(f"{doct_name} cover file not found, check if missing or improperly named.")                        
                             
         # Get the path for file relative to the base path, in most cases this
         # will be the author folder, but for letters this could also be a subfolder of 
         # the author folder.
+        # FIXME/TODO: I think this is the same as the doc folder, so might just be able to reuse
         author_folder = os.path.dirname(os.path.relpath(doc_file.path,folders_path))
         
         # Initialize doc details dictionary record
