@@ -12,7 +12,7 @@ class MTIIndexer:
     
     @staticmethod
     def find_new_lines(file1, file2):
-        with open(file1, 'r') as f1, open(file2, 'r') as f2:
+        with open(file1, 'r', encoding="utf-8") as f1, open(file2, 'r', encoding="utf-8") as f2:
             # Read both files
             file1_lines = f1.readlines()
             file2_lines = f2.readlines()
