@@ -29,6 +29,15 @@ class WPGBookAPIException(Exception):
             ''')
         )
 
+# Use this to throw exceptions for posting a sepcific book. Generally book specific
+# errors are likely recoverable, enabling us to proceed loading further books.
+# 
+# An API exception on the other hand is likely unrecoverable since there might be
+# a problem with the server, therefore not advisable attempting to load further books.
+class WPGBookPostException(Exception):
+     def __init__(self, message):
+        super().__init__(message)
+
 # WPGBook class to store needed attributes to create WPG Book Post
 class WPGBook:
 
@@ -236,8 +245,12 @@ class WPGBookPostClient:
         image_path = f"{book.base_path}\\{book.folder}\\{book.cover_file}"
 
         # Read the image file
-        with open(image_path, 'rb') as img_file:
-            image_data = img_file.read()
+        try:
+            with open(image_path, 'rb') as img_file:
+                image_data = img_file.read()
+        except FileNotFoundError as fe:
+            # This will allow this exception to be properly handled up the chain
+            raise WPGBookPostException(f"Cover file not found at {image_path}") from fe
 
         # Extract image filename
         image_filename = os.path.basename(image_path)
@@ -276,8 +289,12 @@ class WPGBookPostClient:
         pdf_path = f"{book.base_path}\\{book.folder}\\{book.file}"
 
         # Read the pdf file
-        with open(pdf_path, 'rb') as pdf_file:
-            pdf_data = pdf_file.read()
+        try:
+            with open(pdf_path, 'rb') as pdf_file:            
+                pdf_data = pdf_file.read()
+        except FileNotFoundError as fe:
+            # This will allow this exception to be properly handled up the chain
+            raise WPGBookPostException(f"PDF file not found at {pdf_path}") from fe
 
         # Extract pdf filename
         pdf_filename = os.path.basename(pdf_path)
@@ -324,12 +341,13 @@ class WPGBookPostClient:
             for post in posts:
                 # Unescape the title to match the search term
                 post_title  = html.unescape(post['title']['rendered'])
+                post_title  = post_title.replace("’", "'")
                 post_date   = post.get('wbg_published_on', '').strip()
                 post_author = post.get('wbg_author', '').strip()
                 
                 # Handle empty date values
                 date = book.published_on
-                if (date == 'Undated'): date = None
+                if (date == 'Undated' or date==''): date = None
                 if (post_date == ''): post_date = None
                 
                 if (post_title.lower() == book.title.lower() 

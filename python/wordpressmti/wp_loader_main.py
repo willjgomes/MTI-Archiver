@@ -76,8 +76,13 @@ def load(loadManual=False):
 
                 (book_exists, post_ids) = wbgclient.check_book_exists(new_book)
                 if (not book_exists):
-                    book_load_count += 1
-                    loadedbooks.append(load_book(isDryRun, new_book, wbgclient, record, uploadMedia, loadtimestamp))                
+                    try:                    
+                        loadedbooks.append(load_book(isDryRun, new_book, wbgclient, record, uploadMedia, loadtimestamp))            
+                        book_load_count += 1
+                    except WPGBookPostException as be:
+                        book_error_count += 1
+                        record['Error'] = str(be)
+                        loaderrors.append(record)
                 else:
                     book_error_count += 1
                     loaderrors.append(log_book_exists(doct_prefix, record, post_ids))
@@ -102,8 +107,8 @@ def load(loadManual=False):
                 mticonfig.exe_details[MTIDataKey.LAST_WP_LOADER_RUN_DT]  = loadtimestamp
                 mticonfig.save_archiver_data()
 
-        except FileNotFoundError:
-            print(f"Error: File not found at {idx_new_file}")
+        except FileNotFoundError as fe:
+            print(f"Error: {fe}")
         except ValueError as ve:
             print(f"Error: {ve}")
         else:
