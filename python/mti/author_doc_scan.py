@@ -1,4 +1,5 @@
 import os, csv, re
+from titlecase import titlecase
 from mti.mti_config import MTIConfig, mticonfig
 from mti.cover_generator import generate_cover
 from wordpressmti.wbg_book_post import WPGBook
@@ -132,7 +133,7 @@ def create_doc_record(folders_path, doct_name, doc_file, firstname, middlename, 
         # could be a subfolder under the author folder, such as for letters
         doc_folder = os.path.dirname(doc_file.path)
                             
-        title = match.group(1).replace('-', ' ')                            
+        title = titlecase(match.group(1).replace('-', ' '))
         cover_file_name = match.group(1) + "_cover"
         cover_file = next((f.name for f in os.scandir(doc_folder) 
             if f.is_file() and f.name.upper().startswith(cover_file_name.upper())), "")        
