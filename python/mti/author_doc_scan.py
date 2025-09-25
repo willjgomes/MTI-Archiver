@@ -33,13 +33,15 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
             idx_debug.append(f"Processing Author Folder > [{author_folder.name}]")
             idx_debug.append("==========================================================================================================================")
             
-            match = re.match(r"^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+|D(?:a|e)_(?:[A-Za-z0-9.'`-]+|La_[A-Za-z0-9.'`-]+))$", author_folder.name)
+            match = re.match(r"^([A-Za-z0-9.-]+)(?:_([A-Za-z0-9.-]+))?_([A-Za-z0-9.'`-]+|of_[A-Za-z0-9.'`-]+|D(?:a|e)_(?:[A-Za-z0-9.'`-]+|La_[A-Za-z0-9.'`-]+))$", author_folder.name)
             
             if match:
                 authors_processed_count += 1
                 
                 firstname, middlename, lastname = match.groups()
                 middlename = middlename if middlename else ""
+                
+                #print(f"[{firstname}][{middlename}][{lastname}]")
                 
                 for doc_file in scan_recursive(author_folder.path):
                     if doc_file.is_file():                        
