@@ -187,11 +187,14 @@ class WPGBookPostClient:
         })
 
         # Generate the subtitle for the book
-        if (book.book_type == "Article"):
+        if (book.book_type == "Article" or book.book_type == "Journal"):
             subtitle_publisher = book.publisher if book.publisher != "Unknown" else ""
             book.subtitle = f"{subtitle_publisher} {format_subtitle_date(book.published_on, parens=True)}"
-        else:
+        elif not (book.published_on == ""):
             book.subtitle = f"Dated: {format_subtitle_date(book.published_on)}"
+        else:
+            book.subtitle = ""
+        
         post_data.update({
             "wbg_sub_title": book.subtitle
         })
