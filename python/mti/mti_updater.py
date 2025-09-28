@@ -181,6 +181,7 @@ def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
     w_book.author = None
     w_book.publisher = c_book_entry.get("Periodical")
     w_book.published_on = c_book_entry[f"Date"]
+    w_book.book_type = doct_name
 
     wbgclient.create_book(w_book, uploadMedia=False, post_id=w_book.post_id)
 
