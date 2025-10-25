@@ -190,7 +190,7 @@ class WPGBookPostClient:
         if (book.book_type == "Article" or book.book_type == "Journal"):
             subtitle_publisher = book.publisher if book.publisher != "Unknown" else ""
             book.subtitle = f"{subtitle_publisher} {format_subtitle_date(book.published_on, parens=True)}"
-        elif not (book.published_on == ""):
+        elif book.published_on and not (book.published_on == ""):
             book.subtitle = f"Dated: {format_subtitle_date(book.published_on)}"
         else:
             book.subtitle = ""
