@@ -45,7 +45,7 @@ def __init__():
 def start():
     print("Updating started")
     print("================")
-
+    
     if (wbgclient == None):
         __init__()
    
@@ -296,7 +296,8 @@ def process_cover_file(w_book, old_file, old_part, new_part):
 # The "part" of the file name is usually the component separated by an "_". This can be
 # tht title, author, publication, etc.
 def process_file(base, folder, old_file, old_part, new_part, media_id):
-    new_file = old_file.replace(old_part.replace(" ","-"), new_part.replace(" ","-"))
+    new_file = re.sub(old_part.replace(" ","-"), new_part.replace(" ","-"), 
+                      old_file, flags=re.IGNORECASE)
     
     os.rename(os.path.join(base, folder, old_file), os.path.join(base, folder, new_file))
     print(f"Renamed file: {old_file} -> {new_file}")
