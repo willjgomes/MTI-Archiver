@@ -76,7 +76,8 @@ def start():
             # such as missing publication fields, etc. 
             # TODO: May want to find better way to do this.
             reload_details(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
-        else :            
+        else :
+            # Process changes requiring file renames (eg. Rename Title, Update Author, Filenam Fix Spaces)
             process_file_update(action, w_book, c_book_entry, doct_name[0:-1], value, history_row)
 
         update_catalog_entry(c_book_entry, coll_name, doct_name, c_row_num)
@@ -173,9 +174,6 @@ def cateogry_value_is_valid(value):
     return pattern.fullmatch(value)
 
 
-
-
-
 def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
     w_book.title = c_book_entry[f"{doct_name} Title"]
     w_book.author = None
@@ -190,7 +188,21 @@ def reload_details(action, w_book, c_book_entry, doct_name, value, history_row):
 # based on update type. It also returns the part of the filename to replace as 
 # (old, new)  tuple for later file renaming.
 def process_update_value(u_type, w_book, c_book_entry, doct_name, value, history_row):
+    if u_type == "Fix Filename Spaces":
+        old_file = c_book_entry[f"{doct_name} File"]
+
+        history_row.append('Old Filename: ' + old_file)
+        history_row.append('New Filename: ' + old_file.replace(" ", "-"))
+
+        # No need to update w_book fields since only fixing spaces in filename
+
+        # Return the old file name as both parts, the subsequent file rename will handle
+        # replacing spaces with hyphens
+        return (old_file, old_file)
     if u_type == "Rename Title":
+        if not value and value.strip().length == 0:
+            print(f"Blank update value for '{u_type}' for post ID {w_book.post_id}. Skipping.")
+
         old_title = c_book_entry[f"{doct_name} Title"]
         new_title = titlecase(value.strip())
 
@@ -296,7 +308,10 @@ def process_cover_file(w_book, old_file, old_part, new_part):
 # The "part" of the file name is usually the component separated by an "_". This can be
 # tht title, author, publication, etc.
 def process_file(base, folder, old_file, old_part, new_part, media_id):
-    new_file = re.sub(old_part.replace(" ","-"), new_part.replace(" ","-"), 
+    # Get new filename, properly handling hypens depanding on "Rename Title" or "Fix Filename Spaces"
+    # for the latter, just use the old_file as both old and new parts
+    new_file = re.sub(old_part.replace(" ","-") if not old_part == new_part else old_file, 
+                      new_part.replace(" ","-") if not old_part == new_part else old_file.replace(" ","-"), 
                       old_file, flags=re.IGNORECASE)
     
     os.rename(os.path.join(base, folder, old_file), os.path.join(base, folder, new_file))
