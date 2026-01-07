@@ -45,6 +45,8 @@ def get_sheet(spreadsheet_name):
 
     return spreadsheet  
 
+def get_updater_actions_sheet():
+    return get_sheet('Archiver Updates')
 
 def get_archiver_report_sheet(coll_name=None):
     if coll_name is None:

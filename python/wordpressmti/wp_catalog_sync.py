@@ -5,43 +5,8 @@ to ensure all books are in the catalof files and ensure the book files exist in 
 '''
 from wordpressmti.wbg_book_post import get_wbg_client
 from mti.mti_config import MTIDataKey, mticonfig, MTIConfig
-from googlemti import gspread_client
+from googlemti import gspread_client, collection_catalog
 from pathlib import Path
-import mti.mti_updater as mti_updater
-from gspread_dataframe import get_as_dataframe
-
-
-def get_catalog_entry(post_id):
-
-    c_book_entry    = None
-
-    # Find the Archive (Collection & Document Type) so we can get the 
-    # details from the Catalog sheet
-    cell = mti_updater.lookup_tab.find(post_id)
-
-    if (cell):
-        lookup_val = mti_updater.lookup_tab.cell(1, cell.col).value
-        (coll_name, doct_name) = tuple(lookup_val.split(":"))
-
-        # Get the related catalog entry details
-        (c_book_entry, c_row_num) = mti_updater.get_catalog_entry(post_id, coll_name, doct_name)
-
-    return c_book_entry
-
-def get_catalog_entry(post_id,lookup_df):
-
-    c_book_entry    = None
-
-    matches = lookup_df.columns[(lookup_df == post_id).any()]
-
-    lookup_val = matches[0] if not matches.empty else None
-
-    if (lookup_val is not None):
-        (coll_name, doct_name) = tuple(lookup_val.split(":"))
-        # Get the related catalog entry details
-        (c_book_entry, c_row_num) = mti_updater.get_catalog_entry(post_id, coll_name, doct_name)
-    
-    return c_book_entry
 
 
 '''
@@ -93,14 +58,16 @@ def check_book_exists_on_filesystem(book, c_book_entry):
 This queries Wordpress for all book entries and checks to see if the book exists on the file system
 and in the catalog.
 '''
-def process_all_wordpress_book_entries():
+def process_all_wordpress_book_entries(verbose=False):
 
     wbgclient = get_wbg_client()
     for page_counter in range(1, 15):
         books = wbgclient.get_books(page=page_counter)
         for book in books:
             # Check to see if book exists in catalog
-            c_book_entry = get_catalog_entry(str(book.post_id),lookup_df)
+            (c_book_entry, c_row_num, coll_name, doct_name) = (
+                collection_catalog.get_catalog_entry_by_post_id(str(book.post_id))
+            )
 
             # Check to see if book file exists on file system, since it depends
             # on catalog entry data, perform check only if catalog entry found
@@ -120,12 +87,11 @@ def process_all_wordpress_book_entries():
                 if (not is_book_file_found):
                     print("Missing book file     : ",file_path_checked)
                 print()
+            elif (verbose):
+                print(f'{book.post_id} {book.title} - OK')
 
 
-if (mti_updater.wbgclient == None):
-    mti_updater.__init__()
-        
-lookup_df = get_as_dataframe(mti_updater.lookup_tab, evaluate_formulas=True, dtype=str)
-lookup_df.fillna("", inplace=True)  # Fill NaN with empty strings for consistency
+if (not collection_catalog.is_initialized):
+    collection_catalog.__init__()        
 
 process_all_wordpress_book_entries()
