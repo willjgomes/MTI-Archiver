@@ -1,6 +1,6 @@
 import requests, base64, os, json, textwrap, html
 from rich.console import Console
-from mti.mti_config import mticonfig
+from mti.mti_config import MTIConfig, mticonfig
 
 class WPGBookAPIException(Exception):
    def __init__(self, message, response):
@@ -59,6 +59,19 @@ class WPGBook:
     def __str__(self):
         return f"Book(title={self.title}, author={self.author}, description={self.description})"
     
+    def get_filename_from_title(self):
+        filename = f'{self.title.replace(" ","-")}_{self.file.split('_')[-1]}'
+        if (len(self.publisher) > 0):
+            filename = f'{self.publisher.replace(" ","-")}_{filename}'
+
+        if (len(self.published_on) > 0):
+            filename = f'{self.published_on}_{filename}' 
+        elif (self.book_type and self.book_type.lower() in 
+              ["article", "journal", "dissertation", "letter"]):
+            filename = f'Undated_{filename}'
+
+        return filename
+
     @staticmethod
     def get_author(first_name, middle_name, last_name):
         if (len(middle_name) > 0):
@@ -67,7 +80,30 @@ class WPGBook:
             author = first_name + " " + last_name
 
         return author
-    
+
+    @staticmethod
+    def get_type_from_categories(categories):
+        # If the cateogry contains one of the possible document types, 
+        # return it as the book type
+        for cat in categories:
+            for doct in mticonfig.doct_list:
+                if (cat.lower().find(doct.lower()) >= 0 or 
+                    cat.lower().find(MTIConfig.tosingular(doct).lower()) >= 0):
+                    return doct
+        
+        return None
+
+    @staticmethod
+    def get_collection_from_categories(categories):
+        # If the cateogry contains one of the possible collections, 
+        # Check for Mother Teresa first
+        if "Mother Teresa Archive".lower() in [cat.lower() for cat in categories]:
+            return "Mother Teresa Collection" 
+        elif "MTI Library Collection".lower() in [cat.lower() for cat in categories]:
+            return "MTI Library Collection"
+
+        return None    
+
 class WPGBookPostClient:
 
     def __init__(self, site_url, username, password):
@@ -361,6 +397,64 @@ class WPGBookPostClient:
         
         return book_exists, post_ids
     
+    # Warning: The Book file is extracted from download link, which may not be reliable since
+    # Wordpress is modifying the filename in the link. May need to rebuild using book title.
+    def get_books(self, page=1, per_page=100):
+        params = {
+            "page": page,
+            "per_page": per_page
+        }
+
+        response = requests.get(
+            self.wp_books_post_api_url, 
+            params=params, 
+            headers=self.headers
+        )
+
+        book_list = []
+        if response.status_code == 200:
+            posts = extract_json(response)
+            for post in posts:
+                # Unescape the title to match the search term
+                post_title          = html.unescape(post['title']['rendered'])
+                post_title          = post_title.replace("’", "'")
+                post_publisher      = post.get('wbg_publisher', '').strip()
+                post_published_on   = post.get('wbg_published_on', '').strip()
+                post_author         = post.get('wbg_author', '').strip()
+                post_categories     = post.get('wbg_book_categories', [])
+
+                # Wordpress strips out certain characters from filenames, so this may need
+                # to be rebult if there are issues finding files
+                post_file       = post.get('wbg_download_link', '').strip().split('/')[-1]
+                
+                doct_name=WPGBook.get_type_from_categories(post_categories)
+                coll_name=WPGBook.get_collection_from_categories(post_categories)
+
+                base_path = None
+                try: 
+                    archive_sectKey = f'{coll_name}:{doct_name}'
+                    base_path = mticonfig.ini[archive_sectKey]['DocumentFolder'].strip()
+                except KeyError as ke:
+                    #Will swallow this error for now, since base_path will simply be None
+                    continue
+
+                # Note folder is set to author name only and does not handle sub-folders, so
+                # this may need to be rebuilt if there are issues finding files
+                book = WPGBook(title=post_title,
+                               author=post_author,
+                               folder=post_author.replace(" ", "_"),
+                               file=post_file,
+                               base_path=base_path)
+                book.post_id        = post['id']
+                book.publisher      = post_publisher
+                book.published_on   = post_published_on
+                if (doct_name): 
+                    book.book_type=doct_name[:-1]
+                
+                book_list.append(book)
+        
+        return book_list
+
     def delete_media(self, media_id):
         response = requests.delete(
             f"{self.wp_media_api_url}/{media_id}?force=true",
@@ -426,5 +520,4 @@ def format_subtitle_date(date_str, parens=False):
         return subtitle
     except Exception:
         return ""
-
 
