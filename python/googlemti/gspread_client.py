@@ -22,10 +22,11 @@ def get_gspread_client():
 
     return _gs_spread_client
 
-def get_sheet(spreadsheet_name):
+def get_sheet(spreadsheet_name, info_log=True):
     client = get_gspread_client()
 
-    print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
+    if info_log:
+        print(mticonfig.idtab, f"Sheet Name : {spreadsheet_name} ")
     
     # Open existing spreadsheet if it exists
     try:
@@ -41,12 +42,13 @@ def get_sheet(spreadsheet_name):
         # Share sheet with google user
         #spreadsheet.share('your-email@gmail.com', perm_type='user', role='writer')  
 
-    print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
+    if info_log:
+        print(mticonfig.idtab, f"Sheet URL  : {spreadsheet.url} ")
 
     return spreadsheet  
 
-def get_updater_actions_sheet():
-    return get_sheet('Archiver Updates')
+def get_updater_actions_sheet(info_log=True):
+    return get_sheet('Archiver Updates', info_log=info_log)
 
 def get_archiver_report_sheet(coll_name=None):
     if coll_name is None:
@@ -59,10 +61,10 @@ def get_archiver_report_sheet(coll_name=None):
     """
     return get_sheet('Archiver Report: ' + coll_name)
 
-def get_catalog_sheet(coll_name=None):
+def get_catalog_sheet(coll_name=None, info_log=True):
     if coll_name is None:
         coll_name = mticonfig.coll_name
-    return get_sheet('Catalog: ' + coll_name) 
+    return get_sheet('Catalog: ' + coll_name, info_log=info_log) 
 
 def get_row_as_dict(worksheet, row_number):
         header = worksheet.row_values(1)

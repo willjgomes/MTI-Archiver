@@ -130,4 +130,4 @@ def run_powershell_author_doc_scan(folder_to_index, index_output_file, index_deb
         raise IndexerException("Error encountered in Powershell script to process folder.")
 
 def run_python_author_doc_scan(folder_to_index, index_output_file, index_debug_file, index_error_file):
-    author_doc_scan.process_author_folder(folder_to_index, mticonfig.doct_name, index_output_file, index_debug_file, index_error_file, mticonfig.debug_flag('indexer'))
+    author_doc_scan.process_all_author_folders(folder_to_index, mticonfig.doct_name, index_output_file, index_debug_file, index_error_file, mticonfig.debug_flag('indexer'))

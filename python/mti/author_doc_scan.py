@@ -12,7 +12,27 @@ class DocError(Exception):
 
 idx_debug = []
 
-def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, index_error_csv, debug=False):
+# This processes only selected author folders for a given folders_path
+def process_selected_author_folders(folders_path, author_list, doct_name, 
+                                    index_csv, idx_debug_file, index_error_csv, debug=False):
+
+    author_folders = [
+        folder for folder in os.scandir(folders_path) 
+        if folder.is_dir() and folder.name.replace("_","").replace("-","").lower() in author_list
+        ]
+
+    return process_author_folders(folders_path, author_folders, doct_name, 
+                                  index_csv, idx_debug_file, index_error_csv, debug)
+
+# This processes all author folders for a given folders_path
+def process_all_author_folders(folders_path, doct_name, 
+                               index_csv, idx_debug_file, index_error_csv, debug=False):
+    author_folders = list(os.scandir(folders_path))
+    return process_author_folders(folders_path, author_folders, doct_name, 
+                                  index_csv, idx_debug_file, index_error_csv, debug)
+
+def process_author_folders(folders_path, author_folders, doct_name, 
+                           index_csv, idx_debug_file, index_error_csv, debug=False):
     idx_debug = []
     idx_data = []
     idx_error = []
@@ -25,7 +45,6 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
 
     doct_name = MTIConfig.tosingular(doct_name)
     
-    author_folders = list(os.scandir(folders_path))
     for author_folder in tqdm(author_folders, desc="  Processing"):
         if author_folder.is_dir():
             
@@ -68,29 +87,34 @@ def process_author_folder(folders_path, doct_name, index_csv, idx_debug_file, in
                 idx_debug.append(f"==    <<< FOLDER ERROR >>> [{author_folder.name}]: Name does not match regex pattern for author")
                 idx_error.append({"Author Directory":author_folder.name,"Error":"Folder does not appear to be an author name"})
     
-    with open(index_csv, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=get_fieldnames(doct_name))
-        writer.writeheader()
-        writer.writerows(idx_data)
+    if (authors_processed_count + authors_skipped_count) > 0:
+        with open(index_csv, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=get_fieldnames(doct_name))
+            writer.writeheader()
+            writer.writerows(idx_data)
 
-    with open(index_error_csv, "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["Author Directory", "File Name", "Error"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(idx_error)
+        with open(index_error_csv, "w", newline="", encoding="utf-8") as csvfile:
+            fieldnames = ["Author Directory", "File Name", "Error"]
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(idx_error)
 
-    if debug:
-        with open(idx_debug_file, "w", encoding="utf-8") as file:
-            file.writelines(line + "\n" for line in idx_debug)
-    
-    print("\nIndexing Summary (Python)")
-    print(f"\t==> Author Folders Processed: {authors_processed_count}")
-    print(f"\t==>     Documents Identified: {document_processed_count}")
-    print(f"\t==>        Documents Skipped: {document_skipped_count}")
-    print(f"\t==>")
-    print(f"\t==> Author Folders Skipped : {authors_skipped_count}")
-    print(f"\t==> Errors Encountered     : {error_count}")
-    
+        if debug:
+            with open(idx_debug_file, "w", encoding="utf-8") as file:
+                file.writelines(line + "\n" for line in idx_debug)
+        
+        print("\nIndexing Summary (Python)")
+        print(f"\t==> Author Folders Processed: {authors_processed_count}")
+        print(f"\t==>     Documents Identified: {document_processed_count}")
+        print(f"\t==>        Documents Skipped: {document_skipped_count}")
+        print(f"\t==>")
+        print(f"\t==> Author Folders Skipped : {authors_skipped_count}")
+        print(f"\t==> Errors Encountered     : {error_count}")
+    else:
+        print("\nIndexing Summary (Python)")
+        print(f"\t==> Author Folders Processed: 0") 
+
+    return authors_processed_count  
 
 def scan_recursive(path):
     with os.scandir(path) as entries:

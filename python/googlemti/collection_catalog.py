@@ -12,6 +12,7 @@ lookup_df           = None
 catalog_tabsdf_dict = None
 catalog_tabs_dict   = None
 is_initialized      = False
+show_info_log       = False
 
 def __init__():
     #We must use global keyword since we will be reassigning these
@@ -24,7 +25,7 @@ def __init__():
     catalog_tabsdf_dict = {}
     catalog_tabs_dict = {}
 
-    updates_sheet  = gspread_client.get_updater_actions_sheet()
+    updates_sheet  = gspread_client.get_updater_actions_sheet(show_info_log)
 
     lookup_tab  = updates_sheet.worksheet("Lookup")
     lookup_df   = get_as_dataframe(lookup_tab, evaluate_formulas=True, dtype=str)
@@ -71,7 +72,7 @@ def get_catalog_entry(post_id, coll_name, doct_name):
 def get_catalog_df(coll_name, doct_name):
     doct_df = catalog_tabsdf_dict.get((coll_name, doct_name))
     if doct_df is None:
-        catalog_sheet = gspread_client.get_catalog_sheet(coll_name)
+        catalog_sheet = gspread_client.get_catalog_sheet(coll_name, show_info_log)
         doct_tab = catalog_sheet.worksheet(doct_name)
         doct_df = get_as_dataframe(doct_tab, evaluate_formulas=True, dtype=str)
         doct_df.fillna("", inplace=True)  # Fill NaN with empty strings for consistency
