@@ -3,6 +3,7 @@
 This module is used to read all books in wordpress and synchronize with the Google Catalog sheets
 to ensure all books are in the catalof files and ensure the book files exist in the file system.
 '''
+from datetime import datetime
 import os
 from wordpressmti import wp_loader_main
 from wordpressmti.wbg_book_post import get_wbg_client
@@ -11,7 +12,25 @@ from mti import author_doc_scan, book_csv_reader
 from googlemti import gspread_client, collection_catalog
 from pathlib import Path
 from tqdm import tqdm
+import atexit
 
+
+# Setup gloabl variables for file and logging
+datestamp = datetime.now().strftime("%Y-%m-%d")
+wokring_dir = mticonfig.data_dir + '/wp_catalog_sync/' + datestamp + '/'
+os.makedirs(wokring_dir, exist_ok=True)
+
+log_file = open(f'{wokring_dir}/wp-catalog-sync.log', "w", buffering=1)  # line-buffered
+atexit.register(log_file.close)
+
+def log(msg='', console=False):
+    log_file.write(msg + "\n")
+    if (console):
+        print(msg) 
+
+# Convenience method to log to both file and console
+def logc(msg=''):
+    log(msg, console=True)  
 
 '''
 This takes a WPGBook entry and checks to see if it can be found on the file system
@@ -64,6 +83,8 @@ and in the catalog.
 '''
 def process_all_wordpress_book_entries(verbose=False):
 
+    logc('Identiying books from Wordpress missing catalog entries ...')
+
     wbgclient = get_wbg_client()
     missing_results = {}
     max_page = 15
@@ -87,31 +108,40 @@ def process_all_wordpress_book_entries(verbose=False):
                 missing_details = {"book":book}                           
                 missing_details["isMissingCatalog"]   = (not c_book_entry)
                 missing_details["isMissingBookFile"]  = (not is_book_file_found)
-                missing_results[book.post_id] = missing_details
             
-            if (verbose and should_report_missing):
-                fstr = '[ ]' if is_book_file_found else '[F]'
-                cstr = '[ ]' if c_book_entry else '[C]'
-                tqdm.write(f'[NOT OK]{fstr}{cstr}{book.post_id:7} {book.author} - {book.title}')
+                # Generate log message
+                fstr = '[ ' if is_book_file_found else '[F'
+                cstr = ' ]' if c_book_entry else 'C]'
+                msg = f'{fstr}{cstr}{book.post_id:7} {book.author} - {book.title}'
                 if (not is_book_file_found):
-                    tqdm.write(f'       Checked File Path: {file_path_checked}')
+                    msg += (f' - {file_path_checked}')
+                
+                missing_details["log_message"] = msg
+                missing_results[book.post_id] = missing_details
 
-    print(f'Total books with missing items: {len(missing_results)}')
+                log(msg)
+                if (verbose):
+                    tqdm.write(msg) # Write message to screen, preserving tqdm progress bar
+    
+    tqdm.write('')
+
+    log(f'\n# Books out of sync: {len(missing_results)}')
+    log(f'F = Missing File, C = Missing Catalog Entry')
+    
     return missing_results
 
 
-def index_missing_authors_in_collection(folder_to_index, missing_authors, coll_name, doct_name):
+def index_and_catalog_books_in_collection(folder_to_index, missing_authors, coll_name, doct_name):
     
     archive_key = f'{coll_name}_{doct_name}'
+    
     # Setup output filenames for indexer
-    timestamp = mticonfig.get_timestamp()
-    #file_prefix = f'{archive_key}_{timestamp}'        
     file_prefix = f'{archive_key}'        
-    index_output_file   = Path(mticonfig.data_dir + '/temp/' + file_prefix + '_Index.csv')
-    index_debug_file    = Path(mticonfig.data_dir + '/temp/' + file_prefix + '_Index_Debug.txt')
-    index_error_file    = Path(mticonfig.data_dir + '/temp/' + file_prefix + '_Index_Error.csv')
+    index_output_file   = Path(wokring_dir + file_prefix + '_Index.csv')
+    index_debug_file    = Path(wokring_dir + file_prefix + '_Index_Debug.txt')
+    index_error_file    = Path(wokring_dir + file_prefix + '_Index_Error.csv')
 
-    print("Processing folder: ", folder_to_index)    
+    logc(f'Processing folder: {folder_to_index}')    
     num_processed = author_doc_scan.process_selected_author_folders(
         folder_to_index, missing_authors, doct_name,
         index_output_file, index_debug_file, index_error_file, debug=True)
@@ -120,42 +150,58 @@ def index_missing_authors_in_collection(folder_to_index, missing_authors, coll_n
     if num_processed > 0:
         entries.update(create_missing_catalog_entries(doct_name, index_output_file))
         if len(entries) == 0:
-            print(mticonfig.idtab, "WARNING: Folder procssed but no catalog entries created.")
+            logc(f'{mticonfig.idtab} WARNING: Identified folder had no new entries created!')
     else:
-        print(mticonfig.idtab, "Skipping...")
+        logc(f'{mticonfig.idtab} Skipping...')
 
     return entries
 
-def index_missing_authors(missing_authors, missing_post_ids=None):
+def process_missing_books(missing_authors, missing_post_ids=None):
     
+    logc('\nProcessing books identified as missing in catalog...\n')
+
     entry_post_ids = set()
     for coll_name in mticonfig.coll_list:
         for doct_name in mticonfig.doct_list:
             archive_sectkey = f'{coll_name}:{doct_name}'
 
-            print()
-            print("=" * 125)
-            print(f'Indexing missing authors for {archive_sectkey}')
-            print()
+            logc()
+            logc(f'{"=" * 125}')
+            logc(f'Indexing authors for missing books in {archive_sectkey}')
+            logc()
 
             try:   
                 
                 folder_to_index = mticonfig.ini[archive_sectkey]['DocumentFolder'].strip()
                 if len(folder_to_index) <= 0: raise ValueError() 
 
-                entry_post_ids.update(index_missing_authors_in_collection(folder_to_index, missing_authors, coll_name, doct_name[:-1]))        
+                # Call method to index selected author folders and store list of catalog
+                # etnries created in entry_post_ids set
+                entry_post_ids.update(
+                    index_and_catalog_books_in_collection(
+                    folder_to_index, missing_authors, coll_name, doct_name[:-1])
+                ) 
             except (KeyError, ValueError) as e:
-                print(mticonfig.idtab, "No folder path specified in settings.ini. " )
-                print(mticonfig.idtab, "Skipping...")
+                logc(f'{mticonfig.idtab} No folder path specified in settings.ini.')
+                logc(f'{mticonfig.idtab} Skipping...')
 
-    print("Not   created:", missing_post_ids - entry_post_ids)
-    print("Extra created:", entry_post_ids - missing_post_ids)
-    print("Okay  created:", missing_post_ids & entry_post_ids)
+    # Identify sets of missing entries not created, extra entries created, and okay created
+    missing_entries_not_created = missing_post_ids - entry_post_ids
+    extra_entries_created = entry_post_ids - missing_post_ids
+    missing_entries_created = missing_post_ids & entry_post_ids
+
+    logc(f'\n{"=" * 125}\n')
+    logc(f'{len(missing_entries_created):3} Missing Book Entries Created')
+    logc(f'  {sorted(missing_entries_created)}\n')
+    logc(f'{len(missing_entries_not_created):3} Missing Book Entries Not Created')
+    logc(f'  {sorted(missing_entries_not_created)}\n')
+    logc(f'{len(extra_entries_created):3} Extra Book Entries Created')
+    logc(f'  {sorted(extra_entries_created)}\n')    
 
 def create_missing_catalog_entries(doct_prefix, idx_file):
     wbgclient = get_wbg_client()
     
-    print()
+    logc('')
     try:
         created_entries = set()
         for record in book_csv_reader.read_csv_file(doct_prefix, idx_file):
@@ -164,9 +210,9 @@ def create_missing_catalog_entries(doct_prefix, idx_file):
             (book_exists, post_ids) = wbgclient.check_book_exists(new_book)
 
             if (len(post_ids) > 1):
-                print('Multiple books found in wordpress:', {new_book.title} - {new_book.author})
+                logc(f'Multiple books found in wordpress: {new_book.title} - {new_book.author}')
             elif (len(post_ids) == 0):
-                print('No book found in wordpress for:', {new_book.title} - {new_book.author})
+                logc(f'No book found in wordpress for: {new_book.title} - {new_book.author}')
             elif (len(post_ids) == 1):
                 #Exactly one book found in wordpress
                 post_id = post_ids[0]
@@ -177,14 +223,16 @@ def create_missing_catalog_entries(doct_prefix, idx_file):
                 # If catalog entry not found, create the missing entry
                 if (not c_book_entry):
                     created_entries.add(post_id)
-                    print(f'Creating catalog entry: {post_id} - {new_book.title} - {new_book.author}')
+                    logc(f'Creating catalog entry: {post_id} - {new_book.title} - {new_book.author}')
     except Exception as e:
-       print(f"Error processing missing catalog entry: {e}")
+       logc(f"Error processing missing catalog entry: {e}")
 
     return created_entries
 
 
 def start_sync():
+    logc('Starting Wordpress Catalog Sync Process')
+
     if (not collection_catalog.is_initialized):
         collection_catalog.__init__() 
         collection_catalog.show_info_logs = False       
@@ -196,6 +244,9 @@ def start_sync():
     for result in missing_results.values():
         book = result.get("book")
         missing_authors.add(book.author.replace("_","").replace("-","").replace(" ","").lower())
+        missing_post_ids.add(book.post_id)
+
+    process_missing_books(missing_authors, missing_post_ids)
 
 
 def test_sync():
@@ -206,6 +257,6 @@ def test_sync():
     missing_authors = ['annspangler', 'kaifmahmood', 'adolphetanquerey', 'bradleyc.gregory', 'racheldavies', 'iuliumariusmorariu', 'alexandermaclaren', 'albanbutler', 'alfonsoroperoberzosa', 'briankolodiejchuk', 'paulchetcuti', 'michaelchampagne', 'jeanlafrance', 'anndoneganjohnson', 'anthonynicotera', 'amonkofmarimonabbey', 'jacquesphilippe', 'arpitabanerjee', 'jessicacoblentz', 'anthonychidiac', 'aroupchatterjee', 'a.huart', 'joeevans', 'cecilieendresen', 'alphonsusrodriguez', 'morihirooki', 'gezimalpion', 'sisternirmala', 'a.coviello']
     missing_post_ids = {641, 385, 131, 389, 135, 392, 393, 142, 149, 152, 1305, 155, 1308, 1311, 159, 1314, 1317, 165, 1320, 554, 1323, 299, 170, 1326, 560, 1329, 562, 304, 1332, 566, 587, 590, 595, 348, 350, 352, 613, 616, 362, 250, 620, 2286, 240, 243, 248, 378, 1403, 637}
 
-    index_missing_authors(missing_authors, missing_post_ids)
+    process_missing_books(missing_authors, missing_post_ids)
 
 start_sync()
