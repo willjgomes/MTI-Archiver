@@ -199,7 +199,15 @@ class MTIConfig:
 			return str[:-1]
 		else:
 			return str
-		
+
+	@staticmethod
+	def toPlural(str):
+		#Add 's to end of it doesn't have it
+		if (len(str) > 0 and str[-1].lower() != 's'):
+			return str + 's'
+		else:
+			return str	
+
 # Setup Global Variables, note config is loaded when created, no need to call load again
 mticonfig = MTIConfig()
 		

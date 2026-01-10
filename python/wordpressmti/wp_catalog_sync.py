@@ -3,16 +3,16 @@
 This module is used to read all books in wordpress and synchronize with the Google Catalog sheets
 to ensure all books are in the catalof files and ensure the book files exist in the file system.
 '''
+import atexit, os, gspread
+import pandas as pd
 from datetime import datetime
-import os
 from wordpressmti import wp_loader_main
 from wordpressmti.wbg_book_post import get_wbg_client
 from mti.mti_config import MTIDataKey, mticonfig, MTIConfig
 from mti import author_doc_scan, book_csv_reader
-from googlemti import gspread_client, collection_catalog
+from googlemti import gspread_client, collection_catalog, google_util
 from pathlib import Path
 from tqdm import tqdm
-import atexit
 
 
 # Setup gloabl variables for file and logging
@@ -83,13 +83,15 @@ and in the catalog.
 '''
 def process_all_wordpress_book_entries(verbose=False):
 
+    logc(f'\n{"+" * 125}')
     logc('Identiying books from Wordpress missing catalog entries ...')
+    logc(f'{"+" * 125}')
 
     wbgclient = get_wbg_client()
     missing_results = {}
     max_page = 15
 
-    for page_counter in tqdm(range(11, max_page), desc="Processing:"):
+    for page_counter in tqdm(range(1, max_page), desc="Processing:"):
         books = wbgclient.get_books(page=page_counter)
         for book in tqdm(books, desc=f"Page {page_counter}", leave=False):
             # Check to see if book exists in catalog
@@ -148,7 +150,7 @@ def index_and_catalog_books_in_collection(folder_to_index, missing_authors, coll
     
     entries = set()
     if num_processed > 0:
-        entries.update(create_missing_catalog_entries(doct_name, index_output_file))
+        entries.update(create_missing_catalog_entries(coll_name, doct_name, index_output_file))
         if len(entries) == 0:
             logc(f'{mticonfig.idtab} WARNING: Identified folder had no new entries created!')
     else:
@@ -158,7 +160,9 @@ def index_and_catalog_books_in_collection(folder_to_index, missing_authors, coll
 
 def process_missing_books(missing_authors, missing_post_ids=None):
     
-    logc('\nProcessing books identified as missing in catalog...\n')
+    logc(f'\n{"+" * 125}')
+    logc('Processing books identified as missing in catalog...')
+    logc(f'{"+" * 125}')
 
     entry_post_ids = set()
     for coll_name in mticonfig.coll_list:
@@ -166,7 +170,7 @@ def process_missing_books(missing_authors, missing_post_ids=None):
             archive_sectkey = f'{coll_name}:{doct_name}'
 
             logc()
-            logc(f'{"=" * 125}')
+            logc(f'{"-" * 125}')
             logc(f'Indexing authors for missing books in {archive_sectkey}')
             logc()
 
@@ -179,10 +183,10 @@ def process_missing_books(missing_authors, missing_post_ids=None):
                 # etnries created in entry_post_ids set
                 entry_post_ids.update(
                     index_and_catalog_books_in_collection(
-                    folder_to_index, missing_authors, coll_name, doct_name[:-1])
+                    folder_to_index, missing_authors, coll_name, mticonfig.tosingular(doct_name))
                 ) 
             except (KeyError, ValueError) as e:
-                logc(f'{mticonfig.idtab} No folder path specified in settings.ini.')
+                logc(f'{mticonfig.idtab} No folder path specified in settings ini file.')
                 logc(f'{mticonfig.idtab} Skipping...')
 
     # Identify sets of missing entries not created, extra entries created, and okay created
@@ -190,7 +194,8 @@ def process_missing_books(missing_authors, missing_post_ids=None):
     extra_entries_created = entry_post_ids - missing_post_ids
     missing_entries_created = missing_post_ids & entry_post_ids
 
-    logc(f'\n{"=" * 125}\n')
+    logc(f'\n{"+" * 125}\n Wordpress Catalog Sync Summary \n{"+" * 125}')
+
     logc(f'{len(missing_entries_created):3} Missing Book Entries Created')
     logc(f'  {sorted(missing_entries_created)}\n')
     logc(f'{len(missing_entries_not_created):3} Missing Book Entries Not Created')
@@ -198,12 +203,29 @@ def process_missing_books(missing_authors, missing_post_ids=None):
     logc(f'{len(extra_entries_created):3} Extra Book Entries Created')
     logc(f'  {sorted(extra_entries_created)}\n')    
 
-def create_missing_catalog_entries(doct_prefix, idx_file):
+def update_catalog_sheet(coll_name, doct_name, catalog_records):
+        # Get existing collection sheet and fetch headers
+        sheet = gspread_client.get_catalog_sheet(coll_name)
+        try:
+            sheet = sheet.worksheet(doct_name) 
+        except gspread.exceptions.WorksheetNotFound as e:
+            logc(f'Catalog sheet not found: {e}')
+
+        # Append data to Google Sheet
+        df = pd.DataFrame(catalog_records).astype("string")
+        sheet_row_data = google_util.convert_df_to_sheet_rows(df, sheet)
+        sheet.append_rows(sheet_row_data)
+
+
+def create_missing_catalog_entries(coll_name, doct_prefix, idx_file):
     wbgclient = get_wbg_client()
     
     logc('')
     try:
         created_entries = set()
+
+        records_to_catalog = []
+
         for record in book_csv_reader.read_csv_file(doct_prefix, idx_file):
             new_book = wp_loader_main.record_to_book(record, doct_prefix)
 
@@ -216,14 +238,20 @@ def create_missing_catalog_entries(doct_prefix, idx_file):
             elif (len(post_ids) == 1):
                 #Exactly one book found in wordpress
                 post_id = post_ids[0]
-                (c_book_entry, c_row_num, coll_name, doct_name) = (
+                (c_book_entry, _, _, _) = (
                 collection_catalog.get_catalog_entry_by_post_id(str(post_id))
                 )
                 
-                # If catalog entry not found, create the missing entry
+                # If catalog entry not found, add the record to create list
                 if (not c_book_entry):
                     created_entries.add(post_id)
+                    record['Post ID'] = post_id
+                    records_to_catalog.append(record)
+
                     logc(f'Creating catalog entry: {post_id} - {new_book.title} - {new_book.author}')
+        
+        if (len(records_to_catalog) > 0):
+            update_catalog_sheet(coll_name, mticonfig.toPlural(doct_prefix), records_to_catalog)
     except Exception as e:
        logc(f"Error processing missing catalog entry: {e}")
 
@@ -231,7 +259,9 @@ def create_missing_catalog_entries(doct_prefix, idx_file):
 
 
 def start_sync():
+    logc(f'{"=" * 125}')
     logc('Starting Wordpress Catalog Sync Process')
+    logc(f'{"=" * 125}')
 
     if (not collection_catalog.is_initialized):
         collection_catalog.__init__() 
