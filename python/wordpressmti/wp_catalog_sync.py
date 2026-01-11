@@ -196,6 +196,7 @@ def process_missing_books(missing_authors, missing_post_ids=None):
 
     logc(f'\n{"+" * 125}\n Wordpress Catalog Sync Summary \n{"+" * 125}')
 
+    logc(f'{len(missing_post_ids):3} Missing Books Identified\n')
     logc(f'{len(missing_entries_created):3} Missing Book Entries Created')
     logc(f'  {sorted(missing_entries_created)}\n')
     logc(f'{len(missing_entries_not_created):3} Missing Book Entries Not Created')
@@ -258,7 +259,7 @@ def create_missing_catalog_entries(coll_name, doct_prefix, idx_file):
     return created_entries
 
 
-def start_sync():
+def start():
     logc(f'{"=" * 125}')
     logc('Starting Wordpress Catalog Sync Process')
     logc(f'{"=" * 125}')
@@ -289,4 +290,3 @@ def test_sync():
 
     process_missing_books(missing_authors, missing_post_ids)
 
-start_sync()

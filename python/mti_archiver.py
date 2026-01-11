@@ -6,7 +6,7 @@
 # -qlaunch for quick launch of menu items
 #---------------------------------------------------------------------------------------
 
-import os, traceback, argparse
+import os, traceback, argparse, sys
 from pathlib import Path
 from consolemenu import ConsoleMenu, SelectionMenu
 from consolemenu.items import FunctionItem, SubmenuItem
@@ -14,7 +14,7 @@ from mti.mti_indexer import MTIIndexer
 import mti.mti_updater as MTIUpdater
 from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from wordpressmti.wbg_book_post import WPGBookAPIException
-from wordpressmti import wp_loader_main
+from wordpressmti import wp_loader_main, wp_catalog_sync
 from googlemti import google_csv_loader
 
 class MenuItem:
@@ -84,6 +84,20 @@ def launch_updater():
 		print("\nUnexpected Error occured running Word Press Updater!\n")
 		print_error_details()
 
+# Updater function to make changes to loaded documents
+def launch_wp_catalog_sync():
+	try:
+		# Run the loader to load documents/books to Wordpress
+		wp_catalog_sync.start()
+
+		input("Press enter to continue.")
+	except WPGBookAPIException as e:
+		e.print_details()
+		print_error_details()
+	except Exception as e:
+		print("\nUnexpected Error occured running Word Press sync!\n")
+		print_error_details()
+
 
 def get_collection():
 	coll_idx = SelectionMenu.get_selection(mticonfig.coll_list, 
@@ -117,6 +131,13 @@ def get_settings_menu():
 
 	return menu
 
+def get_more_options_menu():
+	menu = ConsoleMenu("More Archving Options")
+
+	menu.append_item(FunctionItem("Run WordPress Sync", launch_wp_catalog_sync))
+
+	return menu
+
 def update_menu_text():
 	menu.epilogue_text = f"Active Archive Folder [ {mticonfig.archive_sectkey} ]\n" 
 
@@ -132,13 +153,13 @@ def create_main_menu():
 	menu.append_item(FunctionItem("Run Indexer", launch_indexer))
 	menu.append_item(FunctionItem("Run WordPress Loader", launch_wp_loader))
 	menu.append_item(FunctionItem("Run Updater", launch_updater))
+	menu.append_item(SubmenuItem("More Tool Options", get_more_options_menu(), menu=menu))
 
 	return menu
 
-def quick_launch(qlaunch):
-	qlaunch = qlaunch.upper()
+def quick_launch(menuname):
 	print("Running in quick launch mode")
-	match qlaunch:
+	match menuname:
 		case "INDEXER":
 			launch_indexer()
 		case "LOADER":
@@ -146,28 +167,77 @@ def quick_launch(qlaunch):
 		case "LOADMANUAL":
 			# Load Manually created Index_new File
 			launch_wp_loader(loadManual=True)
+		case "SYNC":
+			launch_wp_catalog_sync()
 		case "UPDATER":
 			launch_updater()
 
-def get_args():
-	parser = argparse.ArgumentParser()
+def get_args_parser():
+	parser = argparse.ArgumentParser(
+
+    description="""MTI Archiver Tool: Tool to run archving tasks.
+
+ Program must be launched with -m option to run in either quick or
+ interactve launch modes.
+
+   Example:
+       Run using menu: 
+	        mti-arviver.py -m interactive
+
+	   Run a specific option: 
+	        mti-archiver.py -m quick --menu UPDATER
+	""",
+	formatter_class=argparse.RawTextHelpFormatter  # preserves formatting
+	)		
+
+	
 	parser.add_argument(
-		'-qlaunch', metavar="MenuItemName", help='Quick launch the menu option')
-		
-	return parser.parse_args()
+		"-m", "--mode",
+		choices=["quick", "interactive"],
+		default="interactive",
+		metavar="MODE",
+		type=str.lower,
+		help=(
+			"Run mode:\n"
+			"  quick         - Runs program wihtout a menu, requires --menuname arg\n"
+			"  interactive   - Runs program with interactive menu\n"
+		)
+	)
+
+	parser.add_argument(
+		"--menu",
+		metavar="MENU_NAME",
+		type=str.upper,
+		choices=["INDEXER", "LOADER", "UPDATER", "SYNC"],
+		help=("Name of menu item to run")
+	)
+
+
+	return parser
 
 # BEGIN PROGRAM ------------------------------------------------------------------------
 
 try:
 	# Get Command line arguments
-	args = get_args()
+	parser = get_args_parser()
+
+	# If no arguments passed in print help text and exit
+	if len(sys.argv) == 1:
+		parser.print_help()
+		sys.exit(0)
+
+	# Get the args
+	args = parser.parse_args()
 
 	# shutil.rmtree(temp_dir)						# Delete Existing Temp Directory??
 	os.makedirs(mticonfig.temp_dir, exist_ok=True)	# Temporary Working Directory
 
-	if args.qlaunch is not None:
-		quick_launch(args.qlaunch)
-	else:
+	if args.mode == "quick":
+		if not args.menu:
+			parser.error("--menu is required when mode is 'quick'")
+
+		quick_launch(args.menu)
+	elif args.mode == "interactive":
 		# Create the application menu
 		menu = create_main_menu()
 		update_menu_text()

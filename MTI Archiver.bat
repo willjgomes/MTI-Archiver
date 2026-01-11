@@ -1,3 +1,4 @@
 @echo off
-"python.exe" "F:\Scripts\MTI-Archiver\python\mti_archiver.py" %*
+set DEFAULT_ARGS=--mode interactive
+"python.exe" "F:\Scripts\MTI-Archiver\python\mti_archiver.py" %DEFAULT_ARGS% %*
 pause
