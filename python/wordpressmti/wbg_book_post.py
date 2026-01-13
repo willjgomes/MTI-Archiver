@@ -378,7 +378,7 @@ class WPGBookPostClient:
         if (post_date == ''): post_date = None
         
 
-        if (post_title.lower() == book.title.lower()
+        if (post_title.lower().strip() == book.title.lower().strip()
             and post_author.lower() == book.author.lower()
             and post_date == date):
             isMatch = True
