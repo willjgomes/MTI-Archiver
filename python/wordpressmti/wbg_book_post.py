@@ -387,14 +387,16 @@ class WPGBookPostClient:
 
 
     def check_book_exists(self, book):
-        page = 1
+        title = book.title
+        page  = 0
         keep_checking = True
         book_exists = False
         post_ids = []               
 
         while (keep_checking):
+            page += 1
             params = {
-                "search": book.title,  # Search for posts with this title
+                "search": title,
                 "page": page
             }
 
@@ -419,7 +421,12 @@ class WPGBookPostClient:
             elif response.status_code == 400:
                 keep_checking = False
 
-            page += 1
+            # If we haven't found book and nothing else to check and
+            # title contains apostrophe, try again by replacing with smart quote
+            if not keep_checking and not book_exists and "'" in title:
+                keep_checking = True
+                page = 0
+                title = title.replace("'","’")
         
         return book_exists, post_ids
     
