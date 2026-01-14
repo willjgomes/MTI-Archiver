@@ -146,7 +146,7 @@ def record_to_book(record, doct_prefix):
     if (doct_prefix == "Article" or doct_prefix == "Journal"):
         new_book.published_on   = record['Date']
         new_book.publisher      = record['Periodical']
-    elif (doct_prefix == "Letter"):
+    elif (doct_prefix == "Letter" or doct_prefix == "Dissertation"):
         new_book.published_on   = record['Date']
 
     return new_book
