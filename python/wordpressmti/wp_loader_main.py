@@ -143,7 +143,7 @@ def record_to_book(record, doct_prefix):
     new_book.book_categories = [s.strip() for s in book_categories.split(",")]   
 
     # Add article specific fields
-    if (doct_prefix == "Article"):
+    if (doct_prefix == "Article" or doct_prefix == "Journal"):
         new_book.published_on   = record['Date']
         new_book.publisher      = record['Periodical']
     elif (doct_prefix == "Letter"):
