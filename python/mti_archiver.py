@@ -14,7 +14,7 @@ from mti.mti_indexer import MTIIndexer
 import mti.mti_updater as MTIUpdater
 from mti.mti_config import MTIConfig, MTIDataKey, mticonfig
 from wordpressmti.wbg_book_post import WPGBookAPIException
-from wordpressmti import wp_loader_main, wp_catalog_sync
+from wordpressmti import wp_loader_main, wp_catalog_sync, wp_file_sync
 from googlemti import google_csv_loader
 
 class MenuItem:
@@ -84,11 +84,22 @@ def launch_updater():
 		print("\nUnexpected Error occured running Word Press Updater!\n")
 		print_error_details()
 
-# Updater function to make changes to loaded documents
+# Wordpress catalog sync process
 def launch_wp_catalog_sync():
 	try:
-		# Run the loader to load documents/books to Wordpress
 		wp_catalog_sync.start()
+
+		input("Press enter to continue.")
+	except WPGBookAPIException as e:
+		e.print_details()
+		print_error_details()
+	except Exception as e:
+		print("\nUnexpected Error occured running Word Press sync!\n")
+		print_error_details()
+
+def launch_wp_file_sync():
+	try:
+		wp_file_sync.start()
 
 		input("Press enter to continue.")
 	except WPGBookAPIException as e:
@@ -134,7 +145,8 @@ def get_settings_menu():
 def get_more_options_menu():
 	menu = ConsoleMenu("More Archving Options")
 
-	menu.append_item(FunctionItem("Run WordPress Sync", launch_wp_catalog_sync))
+	menu.append_item(FunctionItem("Run WordPress Catalog Sync", launch_wp_catalog_sync))
+	menu.append_item(FunctionItem("Run WordPress File Sync", launch_wp_file_sync))
 
 	return menu
 
@@ -167,8 +179,10 @@ def quick_launch(menuname):
 		case "LOADMANUAL":
 			# Load Manually created Index_new File
 			launch_wp_loader(loadManual=True)
-		case "SYNC":
+		case "WCSYNC":
 			launch_wp_catalog_sync()
+		case "WCSYNC":
+			launch_wp_file_sync()
 		case "UPDATER":
 			launch_updater()
 
@@ -208,8 +222,15 @@ def get_args_parser():
 		"--menu",
 		metavar="MENU_NAME",
 		type=str.upper,
-		choices=["INDEXER", "LOADER", "UPDATER", "SYNC"],
-		help=("Name of menu item to run")
+		choices=["INDEXER", "LOADER", "UPDATER", "WCSYNC"],
+		help=(
+			"Menu options:\n"
+			"  INDEXER - Run the indexer with the last intearctively processed collection.\n"
+			"  LOADER  - Run the indexer with the last intearctively processed collection\n"
+			"  UPDATER - Run the updater to process actions in updater sheet\n"
+			"  WCSYNC  - Run the wordpress catalog sync process\n"
+			"  WFSYNC  - Run the wordpress file sync process\n"
+		)
 	)
 
 
