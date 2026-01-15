@@ -22,7 +22,9 @@ class MTIConfig:
 
 	# Script Paths
 	script_dir		= Path(__file__).parent.parent.parent
-	settings_file	= script_dir / 'settings' / 'archive.ini'
+	#settings_file	= script_dir / 'settings' / 'archive.ini'
+	# TODO: Not sure why setting MTIConfig.settings_file doesn't work (somehow not setting correct scope)
+	settings_file = Path(r"F:\Scripts\MTI-Archiver") / 'settings' / 'archive.ini'
 	indexer_script	= script_dir / 'powershell' / 'author_document_scan.ps1'
 
 	def __init__(self):
@@ -100,14 +102,16 @@ class MTIConfig:
 		return self.data_dir + "/" + self.archive_key
 
 
-	def load_ini(self):
+	def load_ini(self, settings_file: Path = None):
 		# Intiialize ini to config parser
 		self.ini = configparser.ConfigParser()
+		
+		ini_file = settings_file if settings_file else MTIConfig.settings_file
 
 		# Load INI from file
 		try:
-			with open(MTIConfig.settings_file) as f:
-				print("Settings File Detected:\n\t==>", MTIConfig.settings_file)
+			with open(ini_file) as f:
+				print("Settings File Detected:\n\t==>", ini_file)
 				self.ini.read_file(f)
 		except IOError:
 			print("Settings file not found")
@@ -199,15 +203,17 @@ class MTIConfig:
 			return str[:-1]
 		else:
 			return str
-
+		
 	@staticmethod
 	def toPlural(str):
 		#Add 's to end of it doesn't have it
 		if (len(str) > 0 and str[-1].lower() != 's'):
 			return str + 's'
 		else:
-			return str	
+			return str		
 
+
+		
 # Setup Global Variables, note config is loaded when created, no need to call load again
 mticonfig = MTIConfig()
 		

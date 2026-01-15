@@ -9,28 +9,41 @@ from datetime import datetime
 from wordpressmti import wp_loader_main
 from wordpressmti.wbg_book_post import get_wbg_client
 from mti.mti_config import MTIDataKey, mticonfig, MTIConfig
+from mti.mti_logger import MTILogger
 from mti import author_doc_scan, book_csv_reader
 from googlemti import gspread_client, collection_catalog, google_util
 from pathlib import Path
 from tqdm import tqdm
 
+# Global Variables
+working_dir = None
+logger = None
+log = None
+logc = None
 
-# Setup gloabl variables for file and logging
-datestamp = datetime.now().strftime("%Y-%m-%d")
-wokring_dir = mticonfig.data_dir + '/wp_catalog_sync/' + datestamp + '/'
-os.makedirs(wokring_dir, exist_ok=True)
+# Intiialize module and setup gloabl variables
+def __init__():
+    global working_dir, logger, log, logc
 
-log_file = open(f'{wokring_dir}/wp-catalog-sync.log', "w", buffering=1)  # line-buffered
-atexit.register(log_file.close)
+    # Setup working directory
+    datestamp = datetime.now().strftime("%Y-%m-%d")   
+    working_dir = mticonfig.data_dir + '/wp_catalog_sync/' + datestamp + '/'
+    os.makedirs(working_dir, exist_ok=True)
+        
+    # Setup logger and create shorthands for logging functions
+    logger = MTILogger(working_dir, 'wp_catalog_sync')
+    logc = logger.logc
+    log = logger.log
 
-def log(msg='', console=False):
-    log_file.write(msg + "\n")
-    if (console):
-        print(msg) 
+    # Intitialze the catalog module
+    if (not collection_catalog.is_initialized):
+        collection_catalog.__init__() 
+        collection_catalog.show_info_logs = False       
 
-# Convenience method to log to both file and console
-def logc(msg=''):
-    log(msg, console=True)  
+# Check if this module has been initialized
+def is_initialized():
+    # Return true if working directory has been set
+    return bool(working_dir)
 
 '''
 This takes a WPGBook entry and checks to see if it can be found on the file system
@@ -83,9 +96,7 @@ and in the catalog.
 '''
 def process_all_wordpress_book_entries(verbose=False):
 
-    logc(f'\n{"+" * 125}')
-    logc('Identiying books from Wordpress missing catalog entries ...')
-    logc(f'{"+" * 125}')
+    logc('Identiying books from Wordpress missing catalog entries ...', header='+')
 
     wbgclient = get_wbg_client()
     missing_results = {}
@@ -139,9 +150,9 @@ def index_and_catalog_books_in_collection(folder_to_index, missing_authors, coll
     
     # Setup output filenames for indexer
     file_prefix = f'{archive_key}'        
-    index_output_file   = Path(wokring_dir + file_prefix + '_Index.csv')
-    index_debug_file    = Path(wokring_dir + file_prefix + '_Index_Debug.txt')
-    index_error_file    = Path(wokring_dir + file_prefix + '_Index_Error.csv')
+    index_output_file   = Path(working_dir + file_prefix + '_Index.csv')
+    index_debug_file    = Path(working_dir + file_prefix + '_Index_Debug.txt')
+    index_error_file    = Path(working_dir + file_prefix + '_Index_Error.csv')
 
     logc(f'Processing folder: {folder_to_index}')    
     num_processed = author_doc_scan.process_selected_author_folders(
@@ -160,19 +171,14 @@ def index_and_catalog_books_in_collection(folder_to_index, missing_authors, coll
 
 def process_missing_books(missing_authors, missing_post_ids=None):
     
-    logc(f'\n{"+" * 125}')
-    logc('Processing books identified as missing in catalog...')
-    logc(f'{"+" * 125}')
+    logc('Processing books identified as missing in catalog...', header='+')
 
     entry_post_ids = set()
     for coll_name in mticonfig.coll_list:
         for doct_name in mticonfig.doct_list:
             archive_sectkey = f'{coll_name}:{doct_name}'
 
-            logc()
-            logc(f'{"-" * 125}')
-            logc(f'Indexing authors for missing books in {archive_sectkey}')
-            logc()
+            logc(f'\nIndexing authors for missing books in {archive_sectkey}\n')
 
             try:   
                 
@@ -194,7 +200,7 @@ def process_missing_books(missing_authors, missing_post_ids=None):
     extra_entries_created = entry_post_ids - missing_post_ids
     missing_entries_created = missing_post_ids & entry_post_ids
 
-    logc(f'\n{"+" * 125}\n Wordpress Catalog Sync Summary \n{"+" * 125}')
+    logc(f'Wordpress Catalog Sync Summary', header='+')
 
     logc(f'{len(missing_post_ids):3} Missing Books Identified\n')
     logc(f'{len(missing_entries_created):3} Missing Book Entries Created')
@@ -260,13 +266,10 @@ def create_missing_catalog_entries(coll_name, doct_prefix, idx_file):
 
 
 def start():
-    logc(f'{"=" * 125}')
-    logc('Starting Wordpress Catalog Sync Process')
-    logc(f'{"=" * 125}')
+    if not is_initialized():
+        __init__()
 
-    if (not collection_catalog.is_initialized):
-        collection_catalog.__init__() 
-        collection_catalog.show_info_logs = False       
+    logc('Starting Wordpress Catalog Sync Process', header='=')
 
     missing_results = process_all_wordpress_book_entries(verbose=True)
 

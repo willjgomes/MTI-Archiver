@@ -12,55 +12,46 @@ in wordpress are also in the catalog.
 The two wp sync processes can be used to ensure consistency across the file system, wordpress
 and the catalog sheets
 '''
-import atexit, os, gspread
-import pandas as pd
+import os, tqdm
 from datetime import datetime
 from wordpressmti.wbg_book_post import get_wbg_client
 from wordpressmti import wp_loader_main
-from mti.mti_config import MTIDataKey, mticonfig, MTIConfig
+from mti.mti_config import mticonfig
+from mti.mti_logger import MTILogger
 from mti import author_doc_scan, book_csv_reader
-from googlemti import gspread_client, collection_catalog, google_util
 from pathlib import Path
-from tqdm import tqdm
 
+# Global Variables
+working_dir = None
+logger = None
+log = None
+logc = None
 
-# Setup gloabl variables for file and logging
-datestamp = datetime.now().strftime("%Y-%m-%d")
-wokring_dir = mticonfig.data_dir + '/fs_catalog_sync/' + datestamp + '/'
-os.makedirs(wokring_dir, exist_ok=True)
+# Intiialize module and setup gloabl variables
+def __init__():
+    global working_dir, logger, log, logc
 
-log_file = open(f'{wokring_dir}/fs-catalog-sync.log', "w", buffering=1)  # line-buffered
-atexit.register(log_file.close)
+    # Setup working directory
+    datestamp = datetime.now().strftime("%Y-%m-%d")   
+    working_dir = mticonfig.data_dir + '/wp_file_sync/' + datestamp + '/'
+    os.makedirs(working_dir, exist_ok=True)
+        
+    # Setup logger and create shorthands for logging functions
+    logger = MTILogger(working_dir, 'wp_file_sync')
+    logc = logger.logc
+    log = logger.log
 
-def log(msg='', console=False):
-    log_file.write(msg + "\n")
-    if (console):
-        print(msg) 
+# Check if this module has been initialized
+def is_initialized():
+    # Return true if working directory has been set
+    return bool(working_dir)
 
-# Convenience method to log to both file and console
-def logc(msg=''):
-    log(msg, console=True)  
+'''
+This processes the index file and checks to see if all documents indexed are
+in Wordpress
+'''
+def process_index_file(doct_name, index_output_file):
 
-
-def process_index_file(coll_name, doct_name, index_output_file):
-
-    return
-
-def process_document_folder(folder_to_index, coll_name, doct_name):
-    
-    archive_key = f'{coll_name}_{doct_name}'
-    
-    # Setup output filenames for indexer
-    file_prefix = f'{archive_key}'        
-    index_output_file   = Path(wokring_dir + file_prefix + '_Index.csv')
-    index_debug_file    = Path(wokring_dir + file_prefix + '_Index_Debug.txt')
-    index_error_file    = Path(wokring_dir + file_prefix + '_Index_Error.csv')
-
-    logc(f'\nIndexing folder: {folder_to_index} ... \n')    
-    num_processed = author_doc_scan.process_all_author_folders(
-        folder_to_index, doct_name,
-        index_output_file, index_debug_file, index_error_file, debug=True)
-    
     wbgclient = get_wbg_client()
 
     single_found_count = 0
@@ -69,7 +60,7 @@ def process_document_folder(folder_to_index, coll_name, doct_name):
     total_count = 0
 
     try:
-        print("\nChecking Wordpress for documents ...")
+        logc("\nChecking Wordpress for documents ...")
 
         doct_prefix = mticonfig.tosingular(doct_name)
         
@@ -102,9 +93,30 @@ def process_document_folder(folder_to_index, coll_name, doct_name):
     except Exception as e:
        logc(f"Error processing missing catalog entry: {e}")
 
+    return
+
+'''
+This will process the document folder for the collection, index all the documents in 
+the folder to an index file, then process the index file to check wordpress to see if
+document has been loaded into wordpress.
+'''
+def process_document_folder(folder_to_index, coll_name, doct_name):
+    
+    archive_key = f'{coll_name}_{doct_name}'
+    
+    # Setup output filenames for indexer
+    file_prefix = f'{archive_key}'        
+    index_output_file   = Path(working_dir + file_prefix + '_Index.csv')
+    index_debug_file    = Path(working_dir + file_prefix + '_Index_Debug.txt')
+    index_error_file    = Path(working_dir + file_prefix + '_Index_Error.csv')
+
+    logc(f'\nIndexing folder: {folder_to_index} ... \n')    
+    num_processed = author_doc_scan.process_all_author_folders(
+        folder_to_index, doct_name,
+        index_output_file, index_debug_file, index_error_file, debug=True)
     
     if num_processed > 0:
-        process_index_file(coll_name, doct_name, index_output_file)
+        process_index_file(doct_name, index_output_file)
     else:
         logc(f'{mticonfig.idtab} Skipping...')
 
@@ -115,18 +127,16 @@ This will go through each collection and document folder specified in the settin
 create a full index and check to see if all the books are in wordpress.
 '''
 def start():
+    if not is_initialized():
+        __init__()
     
-    logc(f'\n{"=" * 120}')
-    logc('Starting File System Sync Process ...')
-    logc(f'{"=" * 120}')
-
+    logc('Starting File System Sync Process ...', header='=')
+  
     for coll_name in mticonfig.coll_list:
         for doct_name in mticonfig.doct_list:
             archive_sectkey = f'{coll_name}:{doct_name}'
 
-            logc(f'\n{"+" * 120}')
-            logc(f'Collection: {coll_name}:{mticonfig.toPlural(doct_name)}')
-            logc(f'{"+" * 120}')
+            logc(f'Collection: {coll_name}:{mticonfig.toPlural(doct_name)}', header="+")
 
             try:   
                 
@@ -137,7 +147,6 @@ def start():
             except (KeyError, ValueError) as e:
                 logc(f'{mticonfig.idtab} No folder path specified in settings ini file.')
                 logc(f'{mticonfig.idtab} Skipping...')
-
 
 
 def test_sync():

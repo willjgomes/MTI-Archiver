@@ -181,7 +181,7 @@ def quick_launch(menuname):
 			launch_wp_loader(loadManual=True)
 		case "WCSYNC":
 			launch_wp_catalog_sync()
-		case "WCSYNC":
+		case "WFSYNC":
 			launch_wp_file_sync()
 		case "UPDATER":
 			launch_updater()
@@ -222,7 +222,7 @@ def get_args_parser():
 		"--menu",
 		metavar="MENU_NAME",
 		type=str.upper,
-		choices=["INDEXER", "LOADER", "UPDATER", "WCSYNC"],
+		choices=["INDEXER", "LOADER", "UPDATER", "WCSYNC","WFSYNC"],
 		help=(
 			"Menu options:\n"
 			"  INDEXER - Run the indexer with the last intearctively processed collection.\n"
